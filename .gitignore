@@ -13,3 +13,8 @@ dist/
 .env
 .env.local
 .DS_Store
+
+# Firebase Service Account (KHÔNG BAO GIỜ commit file này!)
+scripts/serviceAccountKey.json
+**/serviceAccountKey.json
+*.serviceAccountKey.json
