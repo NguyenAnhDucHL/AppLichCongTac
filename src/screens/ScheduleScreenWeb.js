@@ -5,7 +5,7 @@ import { format, isToday, parseISO, addDays as addDaysFns } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import LoginScreen from './LoginScreen';
 import AdminDashboard from './AdminDashboard';
-import { getCurrentUser } from '../services/AuthService';
+import { getCurrentUser, logout } from '../services/AuthService';
 
 const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDaysData = {} }) => {
   const today = format(new Date(), "EEEE, 'ngày' dd/MM/yyyy", { locale: vi });
@@ -67,9 +67,22 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
     setShowLogin(false);
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setShowAdminDashboard(false);
+  const handleLogout = async () => {
+    try {
+      console.log('🔄 Logging out from ScheduleScreenWeb...');
+      await logout();
+      // Clear tất cả state để quay về trang chủ
+      setCurrentUser(null);
+      setShowAdminDashboard(false);
+      setShowLogin(false);
+      console.log('✅ Logout successful, returned to home page');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      // Vẫn clear state để user có thể quay về trang chủ dù có lỗi
+      setCurrentUser(null);
+      setShowAdminDashboard(false);
+      setShowLogin(false);
+    }
   };
 
   const handleBackFromAdmin = () => {
@@ -311,7 +324,7 @@ const styles = StyleSheet.create({
   navItem: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: 'normal',
     paddingVertical: 4,
     paddingHorizontal: 4,
   },

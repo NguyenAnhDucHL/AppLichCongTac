@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Text, Card, Avatar, Divider, Button, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { Text, Card, Avatar, Divider, Button, ActivityIndicator, Menu } from 'react-native-paper';
 import { logout, getCurrentUser, hasPermission } from '../services/AuthService';
+import ScheduleManagement from './ScheduleManagement';
+import UserManagement from './UserManagement';
+import ReportsAnalytics from './ReportsAnalytics';
+import SystemSettings from './SystemSettings';
+import ProfileSettings from './ProfileSettings';
+import CommonModal from '../components/CommonModal';
 
 const AdminDashboard = ({ onLogout, onBack }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentScreen, setCurrentScreen] = useState('dashboard');
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [stats, setStats] = useState({
     todayEvents: 0,
     weekEvents: 0,
@@ -41,29 +50,31 @@ const AdminDashboard = ({ onLogout, onBack }) => {
     });
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              if (onLogout) {
-                onLogout();
-              }
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Lỗi', 'Không thể đăng xuất');
-            }
-          }
-        }
-      ]
-    );
+  const handleLogout = () => {
+    // Hiển thị modal confirmation
+    setShowLogoutModal(true);
+  };
+
+  const performLogout = async () => {
+    try {
+      console.log('🔄 Bắt đầu logout...');
+      setShowLogoutModal(false);
+      await logout();
+      console.log('✅ Logout thành công');
+      
+      // Luôn gọi callback để quay về trang chủ
+      if (onLogout) {
+        onLogout();
+      }
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      // Vẫn gọi callback để quay về trang chủ dù có lỗi
+      if (onLogout) {
+        onLogout();
+      } else {
+        Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại.');
+      }
+    }
   };
 
   const MenuItem = ({ title, description, icon, onPress, requirePermission }) => {
@@ -97,6 +108,27 @@ const AdminDashboard = ({ onLogout, onBack }) => {
     );
   };
 
+  // Render different screens
+  if (currentScreen === 'schedule') {
+    return <ScheduleManagement onBack={() => setCurrentScreen('dashboard')} />;
+  }
+
+  if (currentScreen === 'users') {
+    return <UserManagement onBack={() => setCurrentScreen('dashboard')} />;
+  }
+
+  if (currentScreen === 'reports') {
+    return <ReportsAnalytics onBack={() => setCurrentScreen('dashboard')} />;
+  }
+
+  if (currentScreen === 'settings') {
+    return <SystemSettings onBack={() => setCurrentScreen('dashboard')} />;
+  }
+
+  if (currentScreen === 'profile') {
+    return <ProfileSettings onBack={() => setCurrentScreen('dashboard')} />;
+  }
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -108,23 +140,88 @@ const AdminDashboard = ({ onLogout, onBack }) => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
+      {/* Header với dropdown menu hiện đại */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Avatar.Text 
-            size={60} 
-            label={user?.fullName?.charAt(0) || 'A'}
-            style={styles.avatar}
-          />
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.fullName || 'Người dùng'}</Text>
-            <Text style={styles.userRole}>{user?.role === 'admin' ? 'Quản trị viên' : user?.role === 'editor' ? 'Biên tập viên' : 'Người xem'}</Text>
-            <Text style={styles.userDepartment}>{user?.department}</Text>
-          </View>
+          <Text style={styles.headerTitle}>Admin Dashboard</Text>
+          <Text style={styles.headerSubtitle}>UBND Phường Cẩm Phả</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Avatar.Icon size={32} icon="logout" style={styles.logoutIcon} />
-        </TouchableOpacity>
+        
+        <View style={styles.userMenuContainer}>
+          <Menu
+            visible={showUserMenu}
+            onDismiss={() => setShowUserMenu(false)}
+            anchor={
+              <TouchableOpacity 
+                style={styles.googleUserTrigger}
+                onPress={() => setShowUserMenu(true)}
+              >
+                <Avatar.Text 
+                  size={36} 
+                  label={user?.avatarInitials || user?.fullName?.charAt(0) || 'A'}
+                  style={[styles.googleAvatar, { backgroundColor: user?.avatarColor || '#1976d2' }]}
+                />
+              </TouchableOpacity>
+            }
+            contentStyle={styles.googleMenuContent}
+          >
+            {/* User Info Section */}
+            <View style={styles.googleMenuHeader}>
+              <Avatar.Text 
+                size={48} 
+                label={user?.avatarInitials || user?.fullName?.charAt(0) || 'A'}
+                style={[styles.googleMenuAvatar, { backgroundColor: user?.avatarColor || '#1976d2' }]}
+              />
+              <View style={styles.googleUserInfo}>
+                <Text style={styles.googleUserName}>{user?.fullName || 'Người dùng'}</Text>
+                <Text style={styles.googleUserEmail}>{user?.email || 'email@example.com'}</Text>
+              </View>
+            </View>
+
+            <Divider style={styles.googleDivider} />
+
+            {/* Menu Items */}
+            <View style={styles.googleMenuItems}>
+              <TouchableOpacity
+                style={styles.googleMenuItem}
+                onPress={() => {
+                  setShowUserMenu(false);
+                  setCurrentScreen('profile');
+                }}
+              >
+                <Avatar.Icon size={20} icon="account" style={styles.googleMenuIcon} />
+                <Text style={styles.googleMenuText}>Quản lý tài khoản</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.googleMenuItem}
+                onPress={() => {
+                  setShowUserMenu(false);
+                  setCurrentScreen('settings');
+                }}
+              >
+                <Avatar.Icon size={20} icon="cog" style={styles.googleMenuIcon} />
+                <Text style={styles.googleMenuText}>Cài đặt hệ thống</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Divider style={styles.googleDivider} />
+
+            {/* Logout Button */}
+            <TouchableOpacity
+              style={styles.googleLogoutButton}
+              onPress={async () => {
+                setShowUserMenu(false);
+                // Đợi một chút để menu đóng trước
+                setTimeout(() => {
+                  handleLogout();
+                }, 100);
+              }}
+            >
+              <Text style={styles.googleLogoutText}>Đăng xuất</Text>
+            </TouchableOpacity>
+          </Menu>
+        </View>
       </View>
 
       {/* Thống kê */}
@@ -167,7 +264,7 @@ const AdminDashboard = ({ onLogout, onBack }) => {
             title="Quản lý Lịch Công Tác"
             description="Thêm, sửa, xóa lịch công tác"
             requirePermission="schedule:write"
-            onPress={() => Alert.alert('Thông báo', 'Tính năng đang phát triển')}
+            onPress={() => setCurrentScreen('schedule')}
           />
           <Divider />
           <MenuItem
@@ -175,7 +272,7 @@ const AdminDashboard = ({ onLogout, onBack }) => {
             title="Quản lý Người Dùng"
             description="Thêm, sửa, phân quyền người dùng"
             requirePermission="user:write"
-            onPress={() => Alert.alert('Thông báo', 'Tính năng đang phát triển')}
+            onPress={() => setCurrentScreen('users')}
           />
           <Divider />
           <MenuItem
@@ -183,7 +280,7 @@ const AdminDashboard = ({ onLogout, onBack }) => {
             title="Báo cáo & Thống kê"
             description="Xem báo cáo hoạt động và thống kê"
             requirePermission="audit:read"
-            onPress={() => Alert.alert('Thông báo', 'Tính năng đang phát triển')}
+            onPress={() => setCurrentScreen('reports')}
           />
           <Divider />
           <MenuItem
@@ -191,7 +288,7 @@ const AdminDashboard = ({ onLogout, onBack }) => {
             title="Cài đặt Hệ thống"
             description="Cấu hình hệ thống và thông số"
             requirePermission="system:manage"
-            onPress={() => Alert.alert('Thông báo', 'Tính năng đang phát triển')}
+            onPress={() => setCurrentScreen('settings')}
           />
         </Card.Content>
       </Card>
@@ -202,6 +299,19 @@ const AdminDashboard = ({ onLogout, onBack }) => {
           Quay lại trang chủ
         </Button>
       </View>
+
+      {/* Logout Confirmation Modal */}
+      <CommonModal
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Đăng xuất"
+        message="Bạn có chắc chắn muốn đăng xuất?"
+        confirmText="Đăng xuất"
+        cancelText="Hủy"
+        onConfirm={performLogout}
+        showCancel={true}
+        confirmButtonStyle="destructive"
+      />
     </ScrollView>
   );
 };
@@ -227,39 +337,110 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
   },
-  avatar: {
-    backgroundColor: '#fff',
-    marginRight: 16,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 20,
+  headerTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
   },
-  userRole: {
+  headerSubtitle: {
     fontSize: 14,
     color: '#e3f2fd',
+    marginTop: 2,
+  },
+  userMenuContainer: {
+    position: 'relative',
+  },
+  googleUserTrigger: {
+    padding: 4,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  googleAvatar: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  googleMenuContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 8,
+    marginRight: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    minWidth: 280,
+    maxWidth: 320,
+  },
+  googleMenuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 16,
+  },
+  googleMenuAvatar: {
+    marginRight: 12,
+    backgroundColor: '#4285f4',
+  },
+  googleUserInfo: {
+    flex: 1,
+  },
+  googleUserName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#202124',
     marginBottom: 2,
   },
-  userDepartment: {
-    fontSize: 12,
-    color: '#bbdefb',
+  googleUserEmail: {
+    fontSize: 14,
+    color: '#5f6368',
   },
-  logoutButton: {
-    padding: 4,
+  googleDivider: {
+    backgroundColor: '#e8eaed',
   },
-  logoutIcon: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  googleMenuItems: {
+    paddingVertical: 8,
+  },
+  googleMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    minHeight: 44,
+  },
+  googleMenuIcon: {
+    backgroundColor: 'transparent',
+    marginRight: 12,
+    width: 20,
+    height: 20,
+  },
+  googleMenuText: {
+    fontSize: 14,
+    color: '#3c4043',
+    flex: 1,
+  },
+  googleLogoutButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  googleLogoutText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#d93025',
   },
   sectionTitle: {
     fontSize: 18,

@@ -133,7 +133,11 @@ export const login = async (username, password) => {
       fullName: userData.fullName,
       role: userData.role,
       department: userData.department,
-      permissions: userData.permissions || []
+      permissions: userData.permissions || [],
+      avatarInitials: userData.avatarInitials || userData.fullName?.charAt(0) || 'U',
+      avatarColor: userData.avatarColor || '#1976d2',
+      phone: userData.phone || '',
+      bio: userData.bio || ''
     }));
     
     console.log('✅ Login successful for:', username);

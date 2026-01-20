@@ -73,6 +73,12 @@ const defaultUsers = [
     fullName: 'Quản trị viên',
     role: 'admin',
     department: 'UBND Phường Cẩm Phả',
+    phone: '',
+    bio: 'Quản trị hệ thống lịch công tác',
+    avatarInitials: 'QT',
+    avatarColor: '#1976d2',
+    emailNotifications: true,
+    pushNotifications: true,
     isActive: true,
     permissions: [
       'schedule:read', 'schedule:write', 'schedule:delete', 'schedule:publish',
@@ -89,6 +95,12 @@ const defaultUsers = [
     fullName: 'Biên tập viên',
     role: 'editor',
     department: 'UBND Phường Cẩm Phả',
+    phone: '',
+    bio: 'Biên tập lịch công tác',
+    avatarInitials: 'BT',
+    avatarColor: '#388e3c',
+    emailNotifications: true,
+    pushNotifications: true,
     isActive: true,
     permissions: [
       'schedule:read', 'schedule:write', 'schedule:delete', 'schedule:publish'

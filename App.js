@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Platform } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
+import { PaperProvider, Portal } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScheduleScreen from './src/screens/ScheduleScreen';
 import ScheduleScreenWeb from './src/screens/ScheduleScreenWeb';
@@ -58,12 +58,15 @@ export default function App() {
             allDaysData={allDaysData}
           />
         ) : (
-          <ScheduleScreen 
-            scheduleData={scheduleData}
-            loading={loading}
-            onRefresh={onRefresh}
-            refreshing={refreshing}
-          />
+          <>
+            <ScheduleScreen 
+              scheduleData={scheduleData}
+              loading={loading}
+              onRefresh={onRefresh}
+              refreshing={refreshing}
+            />
+            <Portal.Host />
+          </>
         )}
       </SafeAreaView>
     </PaperProvider>
