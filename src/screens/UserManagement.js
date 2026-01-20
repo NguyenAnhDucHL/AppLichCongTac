@@ -78,37 +78,37 @@ const UserManagement = ({ onBack }) => {
     return btoa(unescape(encodeURIComponent(password)));
   };
 
-  const handleAddUser = async () => {
-    if (!newUser.username || !newUser.email || !newUser.fullName || !newUser.password) {
+  const handleAddUserWithData = async (userData) => {
+    if (!userData.username || !userData.email || !userData.fullName || !userData.password) {
       Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin');
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newUser.email)) {
+    if (!emailRegex.test(userData.email)) {
       Alert.alert('Lỗi', 'Email không hợp lệ');
       return;
     }
 
     try {
-      const selectedRole = roles.find(role => role.id === newUser.role);
+      const selectedRole = roles.find(role => role.id === userData.role);
       const userDoc = {
-        id: newUser.email,
-        username: newUser.username,
-        email: newUser.email,
-        fullName: newUser.fullName,
-        password: simpleHash(newUser.password),
-        role: newUser.role,
-        department: newUser.department,
-        isActive: newUser.isActive,
+        id: userData.email,
+        username: userData.username,
+        email: userData.email,
+        fullName: userData.fullName,
+        password: simpleHash(userData.password),
+        role: userData.role,
+        department: userData.department,
+        isActive: userData.isActive,
         permissions: selectedRole?.permissions || [],
         createdAt: new Date(),
         createdBy: currentUser?.id || 'admin',
         lastLogin: null
       };
 
-      await setDoc(doc(db, 'users', newUser.email), userDoc);
+      await setDoc(doc(db, 'users', userData.email), userDoc);
       
       setUsers(prev => [...prev, userDoc]);
       setNewUser({
@@ -128,31 +128,36 @@ const UserManagement = ({ onBack }) => {
     }
   };
 
-  const handleEditUser = async () => {
-    if (!editingUser.username || !editingUser.email || !editingUser.fullName) {
+  const handleEditUserWithData = async (userData) => {
+    if (!userData.username || !userData.email || !userData.fullName) {
       Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin');
       return;
     }
 
     try {
-      const selectedRole = roles.find(role => role.id === editingUser.role);
+      const selectedRole = roles.find(role => role.id === userData.role);
       const updatedUser = {
-        ...editingUser,
+        ...userData,
+        id: userData.id || userData.email,
         permissions: selectedRole?.permissions || [],
         updatedAt: new Date(),
         updatedBy: currentUser?.id || 'admin'
       };
 
       // Nếu có password mới thì hash, không thì giữ nguyên
-      if (editingUser.newPassword) {
-        updatedUser.password = simpleHash(editingUser.newPassword);
+      if (userData.newPassword && userData.newPassword.trim() !== '') {
+        updatedUser.password = simpleHash(userData.newPassword);
+        delete updatedUser.newPassword;
+      } else {
+        // Giữ nguyên password cũ (không update)
+        delete updatedUser.password;
         delete updatedUser.newPassword;
       }
 
-      await setDoc(doc(db, 'users', editingUser.id), updatedUser);
+      await setDoc(doc(db, 'users', updatedUser.id), updatedUser, { merge: true });
       
       setUsers(prev => prev.map(user => 
-        user.id === editingUser.id ? updatedUser : user
+        user.id === updatedUser.id ? { ...user, ...updatedUser } : user
       ));
       
       setEditingUser(null);
@@ -228,20 +233,50 @@ const UserManagement = ({ onBack }) => {
 
   const UserModal = ({ visible, onDismiss, title, user, onSave, onUserChange, isEditing = false }) => {
     // Local state để tránh re-render modal
-    const [localUser, setLocalUser] = useState(user || {});
+    const [localUser, setLocalUser] = useState(() => user || {});
+    const prevVisibleRef = useRef(false);
+    const prevUserIdRef = useRef(null);
 
-    // Sync với prop user khi modal mở
+    // CHỈ sync với prop user khi modal mở lần đầu (visible chuyển từ false -> true)
     useEffect(() => {
-      if (visible && user) {
-        setLocalUser(user);
+      const wasVisible = prevVisibleRef.current;
+      const isNowVisible = visible;
+      
+      // Khi modal mở lần đầu (false -> true)
+      if (!wasVisible && isNowVisible && user) {
+        setLocalUser({ ...user });
+        prevUserIdRef.current = user?.id || null;
       }
-    }, [visible, user]);
+      
+      // Khi modal đóng (true -> false)
+      if (wasVisible && !isNowVisible) {
+        // Reset để sẵn sàng cho lần mở tiếp theo
+        prevUserIdRef.current = null;
+      }
+      
+      // Khi user ID thay đổi (chọn user khác) và modal đang mở
+      if (isNowVisible && user?.id && prevUserIdRef.current !== user?.id) {
+        setLocalUser({ ...user });
+        prevUserIdRef.current = user?.id;
+      }
+      
+      prevVisibleRef.current = isNowVisible;
+    }, [visible, user?.id]); // Chỉ sync khi visible hoặc user ID thay đổi
 
-    // Handle local changes
+    // Handle local changes - CHỈ update local state, KHÔNG gọi onUserChange
     const handleLocalChange = (field, value) => {
-      const updatedUser = { ...localUser, [field]: value };
-      setLocalUser(updatedUser);
-      onUserChange(updatedUser);
+      setLocalUser(prev => {
+        const updated = { ...prev, [field]: value };
+        return updated;
+      });
+      // KHÔNG gọi onUserChange ở đây để tránh re-render parent
+    };
+
+    // Handle save - truyền localUser lên parent
+    const handleSave = () => {
+      if (onSave) {
+        onSave(localUser);
+      }
     };
 
     return (
@@ -325,7 +360,7 @@ const UserManagement = ({ onBack }) => {
               
               <View style={styles.modalButtons}>
                 <Button onPress={onDismiss} style={styles.modalButton}>Hủy</Button>
-                <Button mode="contained" onPress={onSave} style={styles.modalButton}>Lưu</Button>
+                <Button mode="contained" onPress={handleSave} style={styles.modalButton}>Lưu</Button>
               </View>
             </View>
           </ScrollView>
@@ -460,11 +495,28 @@ const UserManagement = ({ onBack }) => {
       {/* Add User Modal */}
       <UserModal
         visible={showAddModal}
-        onDismiss={() => setShowAddModal(false)}
+        onDismiss={() => {
+          setShowAddModal(false);
+          // Reset newUser khi đóng modal
+          setNewUser({
+            username: '',
+            email: '',
+            fullName: '',
+            password: '',
+            role: 'viewer',
+            department: 'UBND Phường Cẩm Phả',
+            isActive: true
+          });
+        }}
         title="Thêm người dùng mới"
         user={newUser}
-        onUserChange={setNewUser}
-        onSave={handleAddUser}
+        onSave={(userData) => {
+          // Update newUser với data từ modal
+          setNewUser(userData);
+          // Gọi handleAddUser với userData mới
+          handleAddUserWithData(userData);
+        }}
+        isEditing={false}
       />
 
       {/* Edit User Modal */}
@@ -473,8 +525,12 @@ const UserManagement = ({ onBack }) => {
         onDismiss={() => setShowEditModal(false)}
         title="Sửa thông tin người dùng"
         user={editingUser || {}}
-        onUserChange={setEditingUser}
-        onSave={handleEditUser}
+        onSave={(userData) => {
+          // Update editingUser với data từ modal
+          setEditingUser(userData);
+          // Gọi handleEditUser với userData mới
+          handleEditUserWithData(userData);
+        }}
         isEditing={true}
       />
     </View>

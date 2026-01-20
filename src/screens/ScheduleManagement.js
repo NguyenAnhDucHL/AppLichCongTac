@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, Platform } from 'react-native';
 import { Text, Card, Button, TextInput, ActivityIndicator, FAB, IconButton, Divider } from 'react-native-paper';
 import { format, addDays, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -160,40 +160,143 @@ const ScheduleManagement = ({ onBack }) => {
     return format(parseISO(dateKey), "EEEE, 'ngày' dd/MM/yyyy", { locale: vi });
   };
 
-  const EventModal = ({ visible, onDismiss, title, event, onSave, onEventChange }) => (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>{title}</Text>
+  const EventModal = ({ visible, onDismiss, title, event, onSave, onEventChange }) => {
+    // Local state để tránh re-render modal
+    const [localEvent, setLocalEvent] = useState(() => event || { time: '', content: '' });
+    const prevVisibleRef = useRef(false);
+
+    // CHỈ sync với prop event khi modal mở lần đầu (visible chuyển từ false -> true)
+    useEffect(() => {
+      const wasVisible = prevVisibleRef.current;
+      const isNowVisible = visible;
+      
+      // Khi modal mở lần đầu (false -> true)
+      if (!wasVisible && isNowVisible && event) {
+        setLocalEvent({ ...event });
+      }
+      
+      // Khi modal đóng (true -> false)
+      if (wasVisible && !isNowVisible) {
+        // Reset để sẵn sàng cho lần mở tiếp theo
+        setLocalEvent({ time: '', content: '' });
+      }
+      
+      prevVisibleRef.current = isNowVisible;
+    }, [visible]); // CHỈ phụ thuộc vào visible, KHÔNG phụ thuộc vào event
+
+    const formatTime = (timeStr) => {
+      if (!timeStr) return '';
+      // Đảm bảo format HH:mm
+      const parts = timeStr.split(':');
+      if (parts.length === 2) {
+        return `${String(parts[0]).padStart(2, '0')}:${String(parts[1]).padStart(2, '0')}`;
+      }
+      return timeStr;
+    };
+
+    const handleTimeChange = (text) => {
+      // Chỉ cho phép số và dấu :
+      const cleaned = text.replace(/[^0-9:]/g, '');
+      
+      // Validate format HH:mm
+      if (cleaned.length <= 5) {
+        let formatted = cleaned;
+        
+        // Tự động thêm dấu : sau 2 số đầu (chỉ khi chưa có dấu :)
+        if (cleaned.length > 2 && !cleaned.includes(':')) {
+          formatted = cleaned.slice(0, 2) + ':' + cleaned.slice(2);
+        }
+        
+        // Validate giờ và phút
+        if (formatted.includes(':')) {
+          const [hours, minutes] = formatted.split(':');
+          const h = parseInt(hours) || 0;
+          const m = minutes ? parseInt(minutes) : null;
           
-          <TextInput
-            label="Thời gian (HH:mm)"
-            value={event.time}
-            onChangeText={(text) => onEventChange({ ...event, time: text })}
-            placeholder="08:00"
-            style={styles.input}
-            mode="outlined"
-          />
+          // Validate giờ (0-23)
+          if (h > 23) {
+            // Nếu giờ > 23, không cho phép
+            return;
+          }
           
-          <TextInput
-            label="Nội dung"
-            value={event.content}
-            onChangeText={(text) => onEventChange({ ...event, content: text })}
-            placeholder="Nhập nội dung sự kiện..."
-            multiline
-            numberOfLines={4}
-            style={styles.input}
-            mode="outlined"
-          />
-          
-          <View style={styles.modalButtons}>
-            <Button onPress={onDismiss} style={styles.modalButton}>Hủy</Button>
-            <Button mode="contained" onPress={onSave} style={styles.modalButton}>Lưu</Button>
+          // Validate phút (0-59) - cho phép nhập từng số một
+          if (m !== null) {
+            // Nếu đã có phút đầy đủ (2 số)
+            if (minutes.length === 2) {
+              if (m > 59) {
+                // Nếu phút > 59, không cho phép
+                return;
+              }
+            }
+            // Nếu đang nhập phút (1 số hoặc 2 số), cho phép tiếp tục
+            setLocalEvent(prev => ({ ...prev, time: formatted }));
+          } else {
+            // Chưa có phút, cho phép tiếp tục nhập
+            setLocalEvent(prev => ({ ...prev, time: formatted }));
+          }
+        } else {
+          // Chưa có dấu :, cho phép tiếp tục nhập
+          setLocalEvent(prev => ({ ...prev, time: formatted }));
+        }
+      }
+    };
+
+    const handleContentChange = (text) => {
+      setLocalEvent(prev => ({ ...prev, content: text }));
+    };
+
+    // Handle save - truyền localEvent lên parent
+    const handleSave = () => {
+      if (onSave) {
+        // Update parent state trước khi save
+        if (onEventChange) {
+          onEventChange(localEvent);
+        }
+        onSave();
+      }
+    };
+
+    return (
+      <>
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{title}</Text>
+              
+              {/* Time Input */}
+              <TextInput
+                label="Thời gian (HH:mm)"
+                value={formatTime(localEvent.time)}
+                onChangeText={handleTimeChange}
+                placeholder="08:00"
+                style={styles.input}
+                mode="outlined"
+                keyboardType="numeric"
+                right={<TextInput.Icon icon="clock-outline" />}
+              />
+              
+              <TextInput
+                label="Nội dung"
+                value={localEvent.content}
+                onChangeText={handleContentChange}
+                placeholder="Nhập nội dung sự kiện..."
+                multiline
+                numberOfLines={4}
+                style={styles.input}
+                mode="outlined"
+              />
+              
+              <View style={styles.modalButtons}>
+                <Button onPress={onDismiss} style={styles.modalButton}>Hủy</Button>
+                <Button mode="contained" onPress={handleSave} style={styles.modalButton}>Lưu</Button>
+              </View>
+            </View>
           </View>
-        </View>
-      </View>
-    </Modal>
-  );
+        </Modal>
+
+      </>
+    );
+  };
 
   if (loading) {
     return (
