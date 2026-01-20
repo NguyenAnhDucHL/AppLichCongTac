@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, ImageBackground, TouchableOpacity, Linking } from 'react-native';
 import { Text, Card, ActivityIndicator, Title, Paragraph } from 'react-native-paper';
 import { format, isToday, parseISO, addDays as addDaysFns } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import LoginScreen from './LoginScreen';
 
 const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDaysData = {} }) => {
   const today = format(new Date(), "EEEE, 'ngày' dd/MM/yyyy", { locale: vi });
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const scrollViewRef = React.useRef(null);
+  const [showLogin, setShowLogin] = useState(false);
 
   // Navigation handlers
   const handleHomeClick = () => {
@@ -24,6 +26,31 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
       Linking.openURL(url);
     }
   };
+
+  const handleQuanTriClick = () => {
+    setShowLogin(true);
+  };
+
+  const handleLogin = (credentials) => {
+    // Xử lý đăng nhập ở đây
+    console.log('Login attempt:', credentials);
+    // Sau khi đăng nhập thành công, có thể đóng login screen hoặc điều hướng
+    // setShowLogin(false);
+  };
+
+  const handleBackFromLogin = () => {
+    setShowLogin(false);
+  };
+
+  // Hiển thị login screen nếu showLogin là true
+  if (showLogin) {
+    return (
+      <LoginScreen 
+        onLogin={handleLogin}
+        onBack={handleBackFromLogin}
+      />
+    );
+  }
 
   if (loading && !refreshing) {
     return (
@@ -89,7 +116,9 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
         <View style={styles.navSeparator} />
         <Text style={styles.navItem}>TÌM KIẾM</Text>
         <View style={styles.navSeparator} />
-        <Text style={styles.navItem}>QUẢN TRỊ</Text>
+        <TouchableOpacity onPress={handleQuanTriClick}>
+          <Text style={styles.navItem}>QUẢN TRỊ</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Main Content - Layout 2 cột */}
