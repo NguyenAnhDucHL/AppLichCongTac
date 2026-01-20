@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, ImageBackground, TouchableOpacity, Linking } from 'react-native';
 import { Text, Card, ActivityIndicator, Title, Paragraph } from 'react-native-paper';
 import { format, isToday, parseISO, addDays as addDaysFns } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import LoginScreen from './LoginScreen';
+import AdminDashboard from './AdminDashboard';
+import { getCurrentUser } from '../services/AuthService';
 
 const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDaysData = {} }) => {
   const today = format(new Date(), "EEEE, 'ngày' dd/MM/yyyy", { locale: vi });
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const scrollViewRef = React.useRef(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Kiểm tra session khi component load
+  useEffect(() => {
+    checkCurrentSession();
+  }, []);
+
+  const checkCurrentSession = async () => {
+    try {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    } catch (error) {
+      console.error('Error checking session:', error);
+    }
+  };
 
   // Navigation handlers
   const handleHomeClick = () => {
@@ -28,19 +46,45 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
   };
 
   const handleQuanTriClick = () => {
-    setShowLogin(true);
+    if (currentUser) {
+      // Nếu đã đăng nhập, hiển thị admin dashboard
+      setShowAdminDashboard(true);
+    } else {
+      // Nếu chưa đăng nhập, hiển thị login screen
+      setShowLogin(true);
+    }
   };
 
-  const handleLogin = (credentials) => {
-    // Xử lý đăng nhập ở đây
-    console.log('Login attempt:', credentials);
-    // Sau khi đăng nhập thành công, có thể đóng login screen hoặc điều hướng
-    // setShowLogin(false);
+  const handleLogin = (user) => {
+    // Đăng nhập thành công
+    console.log('Login successful:', user);
+    setCurrentUser(user);
+    setShowLogin(false);
+    setShowAdminDashboard(true);
   };
 
   const handleBackFromLogin = () => {
     setShowLogin(false);
   };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setShowAdminDashboard(false);
+  };
+
+  const handleBackFromAdmin = () => {
+    setShowAdminDashboard(false);
+  };
+
+  // Hiển thị admin dashboard nếu đã đăng nhập và showAdminDashboard là true
+  if (showAdminDashboard && currentUser) {
+    return (
+      <AdminDashboard
+        onLogout={handleLogout}
+        onBack={handleBackFromAdmin}
+      />
+    );
+  }
 
   // Hiển thị login screen nếu showLogin là true
   if (showLogin) {
@@ -117,7 +161,9 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
         <Text style={styles.navItem}>TÌM KIẾM</Text>
         <View style={styles.navSeparator} />
         <TouchableOpacity onPress={handleQuanTriClick}>
-          <Text style={styles.navItem}>QUẢN TRỊ</Text>
+          <Text style={[styles.navItem, currentUser && styles.navItemAuthenticated]}>
+            {currentUser ? `QUẢN TRỊ (${currentUser.fullName})` : 'QUẢN TRỊ'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -344,6 +390,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     textAlign: 'center',
+  },
+  navItemAuthenticated: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
 });
 

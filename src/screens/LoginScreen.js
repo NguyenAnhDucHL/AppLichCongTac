@@ -1,18 +1,37 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text } from 'react-native-paper';
+import { View, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { Text, ActivityIndicator } from 'react-native-paper';
+import { login } from '../services/AuthService';
 
 const LoginScreen = ({ onLogin, onBack }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    if (username.trim() && password.trim()) {
-      // Xử lý đăng nhập ở đây
-      // Có thể gọi API hoặc xử lý logic đăng nhập
-      if (onLogin) {
-        onLogin({ username, password });
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      setError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await login(username.trim(), password);
+      
+      if (result.success) {
+        // Đăng nhập thành công
+        if (onLogin) {
+          onLogin(result.user);
+        }
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(error.message || 'Đăng nhập thất bại');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,10 +57,14 @@ const LoginScreen = ({ onLogin, onBack }) => {
             <TextInput
               style={styles.input}
               value={username}
-              onChangeText={setUsername}
+              onChangeText={(text) => {
+                setUsername(text);
+                setError(''); // Clear error khi user nhập
+              }}
               placeholder="Nhập tên đăng nhập"
               placeholderTextColor="#999"
               autoCapitalize="none"
+              editable={!loading}
             />
             <View style={styles.underline} />
           </View>
@@ -53,22 +76,41 @@ const LoginScreen = ({ onLogin, onBack }) => {
             <TextInput
               style={styles.input}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                setError(''); // Clear error khi user nhập
+              }}
               placeholder="Nhập mật khẩu"
               placeholderTextColor="#999"
               secureTextEntry
+              editable={!loading}
             />
             <View style={styles.underline} />
           </View>
         </View>
 
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : null}
+
         <TouchableOpacity 
-          style={styles.loginButton}
+          style={[styles.loginButton, loading && styles.loginButtonDisabled]}
           onPress={handleLogin}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <Text style={styles.loginButtonText}>Đăng nhập</Text>
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.loginButtonText}>Đăng nhập</Text>
+          )}
         </TouchableOpacity>
+
+        <View style={styles.helpContainer}>
+          <Text style={styles.helpText}>Thông tin đăng nhập mặc định:</Text>
+          <Text style={styles.helpText}>Admin: admin / CamPha@2026</Text>
+          <Text style={styles.helpText}>Editor: editor / Editor@2026</Text>
+        </View>
 
         {onBack && (
           <TouchableOpacity 
@@ -206,6 +248,31 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#666',
     fontSize: 14,
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 14,
+    textAlign: 'center',
+    marginVertical: 8,
+    backgroundColor: '#ffebee',
+    padding: 8,
+    borderRadius: 4,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#999',
+  },
+  helpContainer: {
+    marginTop: 20,
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 4,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196f3',
+  },
+  helpText: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
   },
 });
 

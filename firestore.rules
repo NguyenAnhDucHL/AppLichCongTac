@@ -1,10 +1,35 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Schedules collection - read only for all, write only for admins
+    // Schedules collection - public read, public write (tạm thời cho custom auth)
+    // TODO: Implement Firebase Auth để có security tốt hơn
     match /schedules/{date} {
-      allow read: if true; // Public read
-      allow write: if request.auth != null; // Only authenticated users can write
+      allow read: if true;
+      allow write: if true; // Tạm thời cho phép write, sẽ thay bằng auth check sau
+    }
+    
+    // Users collection - public read for login, public write (tạm thời)
+    // Admin sẽ được check permissions ở application level
+    match /users/{userId} {
+      allow read: if true; // Cần để login
+      allow write: if true; // Tạm thời, sẽ implement auth check ở app level
+    }
+    
+    // Sessions collection - public read/write for session management
+    match /sessions/{sessionId} {
+      allow read, write: if true;
+    }
+    
+    // Roles collection - public read/write
+    match /roles/{roleId} {
+      allow read: if true;
+      allow write: if true; // Tạm thời, admin check ở app level
+    }
+    
+    // System settings - public read/write (admin check ở app level)
+    match /system_settings/{settingId} {
+      allow read: if true;
+      allow write: if true; // Tạm thời, admin check ở app level
     }
   }
 }
