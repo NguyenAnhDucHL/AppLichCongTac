@@ -59,12 +59,12 @@ export default function App() {
           />
         ) : (
           <>
-            <ScheduleScreen 
-              scheduleData={scheduleData}
-              loading={loading}
-              onRefresh={onRefresh}
-              refreshing={refreshing}
-            />
+          <ScheduleScreen 
+            scheduleData={scheduleData}
+            loading={loading}
+            onRefresh={onRefresh}
+            refreshing={refreshing}
+          />
             <Portal.Host />
           </>
         )}

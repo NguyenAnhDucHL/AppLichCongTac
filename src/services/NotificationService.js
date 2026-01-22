@@ -2,19 +2,26 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { parse } from 'date-fns';
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Configure notification behavior (chỉ trên mobile, không phải web)
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 /**
  * Initialize notifications và request permissions
  */
 export const initializeNotifications = async () => {
+  // Không chạy trên web
+  if (Platform.OS === 'web') {
+    return false;
+  }
+  
   try {
     // Request permissions
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -52,6 +59,11 @@ export const initializeNotifications = async () => {
  * Schedule notifications cho các sự kiện trong ngày
  */
 export const scheduleNotifications = async (events) => {
+  // Không chạy trên web
+  if (Platform.OS === 'web') {
+    return;
+  }
+  
   try {
     // Cancel all existing notifications
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -103,6 +115,11 @@ export const scheduleNotifications = async (events) => {
  * Get notification token (cho FCM nếu cần)
  */
 export const getNotificationToken = async () => {
+  // Không chạy trên web
+  if (Platform.OS === 'web') {
+    return null;
+  }
+  
   try {
     const token = await Notifications.getExpoPushTokenAsync({
       projectId: 'YOUR_EXPO_PROJECT_ID', // Thay bằng project ID của bạn

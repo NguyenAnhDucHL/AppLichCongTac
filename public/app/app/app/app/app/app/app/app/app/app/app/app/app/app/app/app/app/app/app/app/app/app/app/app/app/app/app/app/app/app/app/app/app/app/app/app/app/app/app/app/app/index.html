@@ -1,188 +1,37 @@
 <!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lịch Công Tác - Tải ứng dụng</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            text-align: center;
-        }
-        
-        .logo {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-            color: white;
-        }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-        
-        p {
-            color: #666;
-            margin-bottom: 30px;
-            line-height: 1.6;
-        }
-        
-        .download-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .btn {
-            display: inline-block;
-            padding: 15px 30px;
-            border-radius: 10px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 16px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            color: white;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        
-        .btn-ios {
-            background: #000;
-        }
-        
-        .btn-android {
-            background: #3ddc84;
-        }
-        
-        .btn-web {
-            background: #667eea;
-        }
-        
-        .loading {
-            display: none;
-            margin-top: 20px;
-            color: #666;
-        }
-        
-        .loading.show {
-            display: block;
-        }
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Lịch Công Tác</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="logo">📅</div>
-        <h1>Lịch Công Tác</h1>
-        <p>Ứng dụng quản lý lịch công tác thông minh</p>
-        
-        <div class="download-buttons" id="downloadButtons">
-            <a href="#" class="btn btn-ios" id="iosBtn" style="display: none;">
-                📱 Tải cho iOS
-            </a>
-            <a href="#" class="btn btn-android" id="androidBtn" style="display: none;">
-                🤖 Tải cho Android
-            </a>
-            <a href="#" class="btn btn-web" id="webBtn" style="display: none;">
-                🌐 Mở trên Web
-            </a>
-        </div>
-        
-        <div class="loading" id="loading">
-            Đang chuyển hướng...
-        </div>
-    </div>
+  </head>
 
-    <script>
-        // Detect platform
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
-        const isAndroid = /android/i.test(userAgent);
-        
-        // App Store và Play Store links (thay thế bằng links thực tế của bạn)
-        const IOS_APP_URL = 'https://apps.apple.com/app/your-app-id'; // Thay bằng App Store link (sẽ có sau khi upload app lên App Store)
-        const ANDROID_APP_URL = 'https://play.google.com/store/apps/details?id=com.lichcongtac.app'; // Thay bằng Play Store link (sẽ có sau khi upload app lên Play Store)
-        const WEB_APP_URL = 'https://applichcongtac.web.app/app'; // Web app URL local (Expo default port)
-        
-        // Deep link scheme
-        const DEEP_LINK_SCHEME = 'lichcongtac://';
-        
-        function detectAndRedirect() {
-            const loading = document.getElementById('loading');
-            const downloadButtons = document.getElementById('downloadButtons');
-            const iosBtn = document.getElementById('iosBtn');
-            const androidBtn = document.getElementById('androidBtn');
-            const webBtn = document.getElementById('webBtn');
-            
-            if (isIOS) {
-                // Try deep link first
-                window.location = DEEP_LINK_SCHEME;
-                
-                // Fallback to App Store after delay
-                setTimeout(() => {
-                    window.location = IOS_APP_URL;
-                }, 2500);
-                
-                iosBtn.href = IOS_APP_URL;
-                iosBtn.style.display = 'block';
-                loading.classList.add('show');
-            } else if (isAndroid) {
-                // Try deep link first
-                window.location = DEEP_LINK_SCHEME;
-                
-                // Fallback to Play Store after delay
-                setTimeout(() => {
-                    window.location = ANDROID_APP_URL;
-                }, 2500);
-                
-                androidBtn.href = ANDROID_APP_URL;
-                androidBtn.style.display = 'block';
-                loading.classList.add('show');
-            } else {
-                // Desktop or unknown - show all options
-                iosBtn.href = IOS_APP_URL;
-                androidBtn.href = ANDROID_APP_URL;
-                webBtn.href = WEB_APP_URL; // Hiển thị web app
-                iosBtn.style.display = 'block';
-                androidBtn.style.display = 'block';
-                webBtn.style.display = 'block'; // Hiển thị nút web
-            }
-        }
-        
-        // Auto-detect and redirect on load
-        window.addEventListener('load', detectAndRedirect);
-    </script>
-<script src="/app/_expo/static/js/web/AppEntry-4a8e389c09c93bad036b78f42982ad48.js" defer></script>
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  <script src="/app/_expo/static/js/web/AppEntry-40bae89cddd594e30ff3017282541155.js" defer></script>
 </body>
 </html>
