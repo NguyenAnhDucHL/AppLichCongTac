@@ -1,9 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Text, Card, TextInput, Button, ActivityIndicator, Avatar, Switch, Divider } from 'react-native-paper';
+import { Svg, Path } from 'react-native-svg';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { getCurrentUser, logout } from '../services/AuthService';
+import { getCurrentUser, logout, hashPassword } from '../services/AuthService';
+import CommonModal from '../components/CommonModal';
+
+// Custom Eye Icon Component
+const EyeIcon = ({ size = 24, color = '#666' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+      fill={color}
+    />
+  </Svg>
+);
+
+// Custom Eye Off Icon Component
+const EyeOffIcon = ({ size = 24, color = '#666' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"
+      fill={color}
+    />
+  </Svg>
+);
 
 const ProfileSettings = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
@@ -24,6 +46,9 @@ const ProfileSettings = ({ onBack }) => {
     avatarColor: '#1976d2'
   });
   const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -112,37 +137,37 @@ const ProfileSettings = ({ onBack }) => {
         updatedAt: new Date()
       };
 
-      // Hash password mới nếu có
+      // Hash password mới với bcrypt nếu có
       if (profile.newPassword) {
-        updateData.password = Platform.OS === 'web' 
-          ? btoa(unescape(encodeURIComponent(profile.newPassword)))
-          : Buffer.from(profile.newPassword, 'utf8').toString('base64');
+        updateData.password = await hashPassword(profile.newPassword);
       }
 
       await updateDoc(doc(db, 'users', currentUser.id), updateData);
       
-      Alert.alert('Thành công', 'Đã cập nhật thông tin cá nhân', [
-        { text: 'OK', onPress: () => {
-          if (profile.newPassword) {
-            // Nếu đổi mật khẩu, logout để login lại
-            Alert.alert(
-              'Thông báo',
-              'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.',
-              [
-                { text: 'OK', onPress: async () => {
-                  await logout();
-                  onBack();
-                }}
-              ]
-            );
-          }
-        }}
-      ]);
+      // Hiển thị modal thành công
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Lỗi', 'Không thể cập nhật thông tin');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSuccessModalClose = async () => {
+    setShowSuccessModal(false);
+    if (profile.newPassword) {
+      // Nếu đổi mật khẩu, logout để login lại
+      Alert.alert(
+        'Thông báo',
+        'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.',
+        [
+          { text: 'OK', onPress: async () => {
+            await logout();
+            onBack();
+          }}
+        ]
+      );
     }
   };
 
@@ -327,25 +352,51 @@ const ProfileSettings = ({ onBack }) => {
                   Để trống nếu không muốn đổi mật khẩu
                 </Text>
                 
-                <TextInput
-                  label="Mật khẩu mới"
-                  value={profile.newPassword}
-                  onChangeText={(text) => updateProfile('newPassword', text)}
-                  style={styles.input}
-                  mode="outlined"
-                  secureTextEntry
-                  placeholder="Ít nhất 6 ký tự"
-                />
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    label="Mật khẩu mới"
+                    value={profile.newPassword}
+                    onChangeText={(text) => updateProfile('newPassword', text)}
+                    style={styles.input}
+                    mode="outlined"
+                    secureTextEntry={!showNewPassword}
+                    placeholder="Ít nhất 6 ký tự"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowNewPassword(!showNewPassword)}
+                    style={styles.eyeIcon}
+                    activeOpacity={0.7}
+                  >
+                    {showNewPassword ? (
+                      <EyeOffIcon size={24} color="#666" />
+                    ) : (
+                      <EyeIcon size={24} color="#666" />
+                    )}
+                  </TouchableOpacity>
+                </View>
                 
-                <TextInput
-                  label="Xác nhận mật khẩu mới"
-                  value={profile.confirmPassword}
-                  onChangeText={(text) => updateProfile('confirmPassword', text)}
-                  style={styles.input}
-                  mode="outlined"
-                  secureTextEntry
-                  error={profile.newPassword && profile.confirmPassword && profile.newPassword !== profile.confirmPassword}
-                />
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    label="Xác nhận mật khẩu mới"
+                    value={profile.confirmPassword}
+                    onChangeText={(text) => updateProfile('confirmPassword', text)}
+                    style={styles.input}
+                    mode="outlined"
+                    secureTextEntry={!showConfirmPassword}
+                    error={profile.newPassword && profile.confirmPassword && profile.newPassword !== profile.confirmPassword}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeIcon}
+                    activeOpacity={0.7}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOffIcon size={24} color="#666" />
+                    ) : (
+                      <EyeIcon size={24} color="#666" />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </Card.Content>
@@ -409,6 +460,18 @@ const ProfileSettings = ({ onBack }) => {
           </Button>
         </View>
       </ScrollView>
+
+      {/* Success Modal */}
+      <CommonModal
+        visible={showSuccessModal}
+        onClose={handleSuccessModalClose}
+        title="Thành công"
+        message="Đã cập nhật thông tin cá nhân"
+        confirmText="Đóng"
+        showCancel={false}
+        confirmButtonStyle="success"
+        onConfirm={handleSuccessModalClose}
+      />
     </View>
   );
 };
@@ -505,6 +568,19 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+    paddingRight: 50, // Space for icon
+  },
+  passwordInputWrapper: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   label: {
     fontSize: 14,
@@ -560,12 +636,15 @@ const styles = StyleSheet.create({
   },
   saveSection: {
     paddingVertical: 24,
+    alignItems: 'center',
   },
   saveButton: {
-    marginHorizontal: 20,
+    alignSelf: 'center',
+    minWidth: 120,
   },
   saveButtonContent: {
-    paddingVertical: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
   },
 });
 

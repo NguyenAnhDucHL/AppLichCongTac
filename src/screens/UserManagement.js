@@ -1,9 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
-import { Text, Card, Button, TextInput, ActivityIndicator, FAB, IconButton, Switch, Chip } from 'react-native-paper';
+import { Text, Card, Button, TextInput, ActivityIndicator, FAB, Switch, Chip } from 'react-native-paper';
+import { Svg, Path } from 'react-native-svg';
 import { collection, doc, getDoc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { hasPermission, getCurrentUser } from '../services/AuthService';
+import { hasPermission, getCurrentUser, hashPassword } from '../services/AuthService';
+
+// Custom Eye Icon Component
+const EyeIcon = ({ size = 24, color = '#666' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+      fill={color}
+    />
+  </Svg>
+);
+
+// Custom Eye Off Icon Component
+const EyeOffIcon = ({ size = 24, color = '#666' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"
+      fill={color}
+    />
+  </Svg>
+);
 
 const UserManagement = ({ onBack }) => {
   const [users, setUsers] = useState([]);
@@ -73,11 +94,6 @@ const UserManagement = ({ onBack }) => {
     }
   };
 
-  const simpleHash = (password) => {
-    // Simple base64 hash - trong production nên dùng bcrypt
-    return btoa(unescape(encodeURIComponent(password)));
-  };
-
   const handleAddUserWithData = async (userData) => {
     if (!userData.username || !userData.email || !userData.fullName || !userData.password) {
       Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ thông tin');
@@ -93,12 +109,15 @@ const UserManagement = ({ onBack }) => {
 
     try {
       const selectedRole = roles.find(role => role.id === userData.role);
+      // Hash password với bcrypt (bảo mật cao nhất)
+      const hashedPassword = await hashPassword(userData.password);
+      
       const userDoc = {
         id: userData.email,
         username: userData.username,
         email: userData.email,
         fullName: userData.fullName,
-        password: simpleHash(userData.password),
+        password: hashedPassword,
         role: userData.role,
         department: userData.department,
         isActive: userData.isActive,
@@ -144,9 +163,9 @@ const UserManagement = ({ onBack }) => {
         updatedBy: currentUser?.id || 'admin'
       };
 
-      // Nếu có password mới thì hash, không thì giữ nguyên
+      // Nếu có password mới thì hash với bcrypt, không thì giữ nguyên
       if (userData.newPassword && userData.newPassword.trim() !== '') {
-        updatedUser.password = simpleHash(userData.newPassword);
+        updatedUser.password = await hashPassword(userData.newPassword);
         delete updatedUser.newPassword;
       } else {
         // Giữ nguyên password cũ (không update)
@@ -234,6 +253,7 @@ const UserManagement = ({ onBack }) => {
   const UserModal = ({ visible, onDismiss, title, user, onSave, onUserChange, isEditing = false }) => {
     // Local state để tránh re-render modal
     const [localUser, setLocalUser] = useState(() => user || {});
+    const [showPassword, setShowPassword] = useState(false);
     const prevVisibleRef = useRef(false);
     const prevUserIdRef = useRef(null);
 
@@ -318,14 +338,27 @@ const UserManagement = ({ onBack }) => {
                 mode="outlined"
               />
               
-              <TextInput
-                label={isEditing ? "Mật khẩu mới (để trống nếu không đổi)" : "Mật khẩu *"}
-                value={isEditing ? (localUser.newPassword || '') : (localUser.password || '')}
-                onChangeText={(text) => handleLocalChange(isEditing ? 'newPassword' : 'password', text)}
-                style={styles.input}
-                mode="outlined"
-                secureTextEntry
-              />
+              <View style={styles.passwordInputWrapper}>
+                <TextInput
+                  label={isEditing ? "Mật khẩu mới (để trống nếu không đổi)" : "Mật khẩu *"}
+                  value={isEditing ? (localUser.newPassword || '') : (localUser.password || '')}
+                  onChangeText={(text) => handleLocalChange(isEditing ? 'newPassword' : 'password', text)}
+                  style={styles.input}
+                  mode="outlined"
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                  activeOpacity={0.7}
+                >
+                  {showPassword ? (
+                    <EyeOffIcon size={24} color="#666" />
+                  ) : (
+                    <EyeIcon size={24} color="#666" />
+                  )}
+                </TouchableOpacity>
+              </View>
               
               <TextInput
                 label="Phòng ban"
@@ -682,6 +715,19 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+    paddingRight: 50, // Space for icon
+  },
+  passwordInputWrapper: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   label: {
     fontSize: 14,

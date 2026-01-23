@@ -6,6 +6,7 @@
  */
 
 const admin = require('firebase-admin');
+const bcrypt = require('bcryptjs');
 const serviceAccount = require('./serviceAccountKey.json');
 
 // Initialize Firebase Admin
@@ -15,10 +16,12 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-// Helper function để hash password (simple hash - trong production nên dùng bcrypt)
-function simpleHash(password) {
-  // Đây chỉ là hash đơn giản, trong production nên dùng bcrypt
-  return Buffer.from(password).toString('base64');
+// Bcrypt salt rounds (cost factor)
+const BCRYPT_SALT_ROUNDS = 10;
+
+// Helper function để hash password với bcrypt (BẢO MẬT CAO NHẤT)
+async function hashPassword(password) {
+  return await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 }
 
 // Default roles
@@ -63,13 +66,13 @@ const defaultRoles = [
   }
 ];
 
-// Default users
+// Default users (password sẽ được hash trong setupDatabase function)
 const defaultUsers = [
   {
     id: 'admin@campha.gov.vn',
     email: 'admin@campha.gov.vn',
     username: 'admin',
-    password: simpleHash('CamPha@2026'),
+    plainPassword: 'CamPha@2026', // Sẽ được hash
     fullName: 'Quản trị viên',
     role: 'admin',
     department: 'UBND Phường Cẩm Phả',
@@ -91,7 +94,7 @@ const defaultUsers = [
     id: 'editor@campha.gov.vn',
     email: 'editor@campha.gov.vn', 
     username: 'editor',
-    password: simpleHash('Editor@2026'),
+    plainPassword: 'Editor@2026', // Sẽ được hash
     fullName: 'Biên tập viên',
     role: 'editor',
     department: 'UBND Phường Cẩm Phả',
@@ -123,9 +126,35 @@ const systemSettings = {
   updatedAt: admin.firestore.FieldValue.serverTimestamp()
 };
 
+async function deleteAllDocuments(collectionName) {
+  const collectionRef = db.collection(collectionName);
+  const snapshot = await collectionRef.get();
+  
+  if (snapshot.empty) {
+    console.log(`   ℹ️  Collection '${collectionName}' đã trống`);
+    return;
+  }
+
+  const batch = db.batch();
+  snapshot.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  await batch.commit();
+  console.log(`   ✅ Đã xóa ${snapshot.size} documents từ '${collectionName}'`);
+}
+
 async function setupDatabase() {
   try {
     console.log('🚀 Bắt đầu setup database...\n');
+
+    // 0. Xóa tất cả dữ liệu cũ
+    console.log('🗑️  Xóa dữ liệu cũ...');
+    await deleteAllDocuments('users');
+    await deleteAllDocuments('roles');
+    await deleteAllDocuments('schedules');
+    await deleteAllDocuments('system_settings');
+    await deleteAllDocuments('sessions');
+    console.log('✅ Đã xóa hết dữ liệu cũ\n');
 
     // 1. Setup roles
     console.log('📝 Tạo roles...');
@@ -137,7 +166,17 @@ async function setupDatabase() {
     // 2. Setup users  
     console.log('\n👤 Tạo users...');
     for (const user of defaultUsers) {
-      await db.collection('users').doc(user.id).set(user);
+      // Hash password với bcrypt
+      const hashedPassword = await hashPassword(user.plainPassword);
+      
+      // Tạo user object với password đã hash
+      const userDoc = {
+        ...user,
+        password: hashedPassword
+      };
+      delete userDoc.plainPassword; // Xóa plainPassword
+      
+      await db.collection('users').doc(user.id).set(userDoc);
       console.log(`✅ Tạo user: ${user.fullName} (${user.username})`);
     }
 

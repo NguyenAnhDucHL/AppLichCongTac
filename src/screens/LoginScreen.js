@@ -1,13 +1,35 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { Text, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { Text, ActivityIndicator, TextInput } from 'react-native-paper';
+import { Svg, Path } from 'react-native-svg';
 import { login } from '../services/AuthService';
+
+// Custom Eye Icon Component
+const EyeIcon = ({ size = 24, color = '#666' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+      fill={color}
+    />
+  </Svg>
+);
+
+// Custom Eye Off Icon Component
+const EyeOffIcon = ({ size = 24, color = '#666' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"
+      fill={color}
+    />
+  </Svg>
+);
 
 const LoginScreen = ({ onLogin, onBack }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -53,26 +75,25 @@ const LoginScreen = ({ onLogin, onBack }) => {
         
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Tên đăng nhập</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text);
-                setError(''); // Clear error khi user nhập
-              }}
-              placeholder="Nhập tên đăng nhập"
-              placeholderTextColor="#999"
-              autoCapitalize="none"
-              editable={!loading}
-            />
-            <View style={styles.underline} />
-          </View>
+          <TextInput
+            style={styles.input}
+            value={username}
+            onChangeText={(text) => {
+              setUsername(text);
+              setError(''); // Clear error khi user nhập
+            }}
+            placeholder="Nhập tên đăng nhập"
+            mode="flat"
+            autoCapitalize="none"
+            editable={!loading}
+            underlineColor="#999"
+            activeUnderlineColor="#1976d2"
+          />
         </View>
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Mật khẩu</Text>
-          <View style={styles.inputWrapper}>
+          <View style={styles.passwordInputWrapper}>
             <TextInput
               style={styles.input}
               value={password}
@@ -81,11 +102,23 @@ const LoginScreen = ({ onLogin, onBack }) => {
                 setError(''); // Clear error khi user nhập
               }}
               placeholder="Nhập mật khẩu"
-              placeholderTextColor="#999"
-              secureTextEntry
+              mode="flat"
+              secureTextEntry={!showPassword}
               editable={!loading}
+              underlineColor="#999"
+              activeUnderlineColor="#1976d2"
             />
-            <View style={styles.underline} />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeIcon}
+              activeOpacity={0.7}
+            >
+              {showPassword ? (
+                <EyeOffIcon size={24} color="#666" />
+              ) : (
+                <EyeIcon size={24} color="#666" />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -203,21 +236,21 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: '500',
   },
-  inputWrapper: {
+  input: {
+    backgroundColor: 'transparent',
+    fontSize: 16,
+    paddingRight: 50, // Space for icon
+  },
+  passwordInputWrapper: {
     position: 'relative',
   },
-  input: {
-    fontSize: 16,
-    color: '#333',
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-    backgroundColor: 'transparent',
-    borderBottomWidth: 0,
-  },
-  underline: {
-    height: 1,
-    backgroundColor: '#999',
-    marginTop: 4,
+  eyeIcon: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loginButton: {
     backgroundColor: '#4caf50', // Green color

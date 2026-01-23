@@ -1,26 +1,52 @@
 import { collection, doc, getDoc, getDocs, query, where, updateDoc, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 import { db } from '../config/firebase';
+import bcrypt from 'bcryptjs';
 
 const USERS_COLLECTION = 'users';
 const SESSIONS_COLLECTION = 'sessions';
 const AUTH_TOKEN_KEY = 'auth_token';
 const USER_DATA_KEY = 'user_data';
 
+// Bcrypt salt rounds (cost factor) - 10 là giá trị cân bằng giữa bảo mật và tốc độ
+const BCRYPT_SALT_ROUNDS = 10;
+
 /**
- * Simple hash function (trong production nên dùng bcrypt)
+ * Hash password với bcrypt (BẢO MẬT CAO NHẤT)
+ * bcrypt tự động tạo salt ngẫu nhiên cho mỗi password
  * Tương thích với cả web và mobile
  */
-function simpleHash(password) {
-  if (Platform.OS === 'web') {
-    // Sử dụng btoa cho web (browser native)
-    return btoa(unescape(encodeURIComponent(password)));
-  } else {
-    // Sử dụng Buffer cho mobile (Node.js environment)
-    // eslint-disable-next-line no-undef
-    return Buffer.from(password, 'utf8').toString('base64');
+export async function hashPassword(password) {
+  if (!password) {
+    throw new Error('Password is required');
   }
+  
+  // bcrypt.hash tự động tạo salt và hash password
+  const hashed = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+  return hashed;
+}
+
+/**
+ * So sánh password với hash (dùng bcrypt)
+ */
+export async function comparePassword(password, hash) {
+  if (!password || !hash) {
+    return false;
+  }
+  
+  try {
+    return await bcrypt.compare(password, hash);
+  } catch (error) {
+    console.error('Error comparing password:', error);
+    return false;
+  }
+}
+
+/**
+ * Check nếu hash là bcrypt hash (bắt đầu với $2a$, $2b$, hoặc $2y$)
+ */
+function isBcryptHash(hash) {
+  return hash && (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$'));
 }
 
 /**
@@ -36,10 +62,6 @@ function generateSessionToken() {
 export const login = async (username, password) => {
   try {
     console.log('🔐 Attempting login for:', username);
-    
-    // Hash password để so sánh
-    const hashedPassword = simpleHash(password);
-    console.log('🔑 Password hashed');
     
     // Try to get user by document ID first (optimization)
     let userDoc = null;
@@ -92,8 +114,15 @@ export const login = async (username, password) => {
       }
     }
     
-    // Kiểm tra password
-    if (userData.password !== hashedPassword) {
+    // Kiểm tra password - chỉ hỗ trợ bcrypt
+    if (!isBcryptHash(userData.password)) {
+      throw new Error('Mật khẩu không hợp lệ. Vui lòng liên hệ quản trị viên để reset mật khẩu.');
+    }
+    
+    // Dùng bcrypt.compare để so sánh password
+    const passwordMatch = await comparePassword(password, userData.password);
+    
+    if (!passwordMatch) {
       throw new Error('Mật khẩu không đúng');
     }
     
