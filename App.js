@@ -4,7 +4,7 @@ import { StyleSheet, Platform } from 'react-native';
 import { PaperProvider, Portal } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ScheduleScreen from './src/screens/ScheduleScreen';
-import ScheduleScreenWeb from './src/screens/ScheduleScreenWeb';
+import AppRouter from './src/AppRouter';
 import { initializeNotifications, scheduleNotifications } from './src/services/NotificationService';
 import { useScheduleSync } from './src/hooks/useScheduleSync';
 import { useScheduleMultiDays } from './src/hooks/useScheduleMultiDays';
@@ -45,29 +45,22 @@ export default function App() {
     setRefreshing(false);
   };
 
+  // Use router on web, normal navigation on mobile
+  if (isWeb) {
+    return <AppRouter />;
+  }
+
   return (
     <PaperProvider>
       <SafeAreaView style={styles.container}>
         <StatusBar style="auto" />
-        {isWeb ? (
-          <ScheduleScreenWeb 
-            scheduleData={scheduleData}
-            loading={loading || loadingMulti}
-            onRefresh={onRefresh}
-            refreshing={refreshing}
-            allDaysData={allDaysData}
-          />
-        ) : (
-          <>
-          <ScheduleScreen 
-            scheduleData={scheduleData}
-            loading={loading}
-            onRefresh={onRefresh}
-            refreshing={refreshing}
-          />
-            <Portal.Host />
-          </>
-        )}
+        <ScheduleScreen 
+          scheduleData={scheduleData}
+          loading={loading}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+        />
+        <Portal.Host />
       </SafeAreaView>
     </PaperProvider>
   );

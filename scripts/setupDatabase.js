@@ -63,6 +63,28 @@ const defaultRoles = [
       'schedule:read'
     ],
     createdAt: admin.firestore.FieldValue.serverTimestamp()
+  },
+  {
+    id: 'moderator',
+    name: 'Điều phối viên',
+    description: 'Duyệt và xuất bản lịch công tác',
+    permissions: [
+      'schedule:read',
+      'schedule:write',
+      'schedule:publish',
+      'schedule:approve'
+    ],
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  },
+  {
+    id: 'secretary',
+    name: 'Thư ký',
+    description: 'Thêm và sửa lịch công tác (không được xóa)',
+    permissions: [
+      'schedule:read',
+      'schedule:write'
+    ],
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
   }
 ];
 

@@ -9,7 +9,7 @@ import SystemSettings from './SystemSettings';
 import ProfileSettings from './ProfileSettings';
 import CommonModal from '../components/CommonModal';
 
-const AdminDashboard = ({ onLogout, onBack }) => {
+const AdminDashboard = ({ onLogout, onBack, navigate }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentScreen, setCurrentScreen] = useState('dashboard');
@@ -110,11 +110,17 @@ const AdminDashboard = ({ onLogout, onBack }) => {
 
   // Render different screens
   if (currentScreen === 'schedule') {
-    return <ScheduleManagement onBack={() => setCurrentScreen('dashboard')} />;
+    const handleBack = navigate 
+      ? () => navigate('/app/admin')
+      : () => setCurrentScreen('dashboard');
+    return <ScheduleManagement onBack={handleBack} />;
   }
 
   if (currentScreen === 'users') {
-    return <UserManagement onBack={() => setCurrentScreen('dashboard')} />;
+    const handleBack = navigate 
+      ? () => navigate('/app/admin')
+      : () => setCurrentScreen('dashboard');
+    return <UserManagement onBack={handleBack} />;
   }
 
   if (currentScreen === 'reports') {
@@ -264,7 +270,13 @@ const AdminDashboard = ({ onLogout, onBack }) => {
             title="Quản lý Lịch Công Tác"
             description="Thêm, sửa, xóa lịch công tác"
             requirePermission="schedule:write"
-            onPress={() => setCurrentScreen('schedule')}
+            onPress={() => {
+              if (navigate) {
+                navigate('/app/admin/schedule');
+              } else {
+                setCurrentScreen('schedule');
+              }
+            }}
           />
           <Divider />
           <MenuItem
@@ -272,7 +284,13 @@ const AdminDashboard = ({ onLogout, onBack }) => {
             title="Quản lý Người Dùng"
             description="Thêm, sửa, phân quyền người dùng"
             requirePermission="user:write"
-            onPress={() => setCurrentScreen('users')}
+            onPress={() => {
+              if (navigate) {
+                navigate('/app/admin/users');
+              } else {
+                setCurrentScreen('users');
+              }
+            }}
           />
           <Divider />
           <MenuItem

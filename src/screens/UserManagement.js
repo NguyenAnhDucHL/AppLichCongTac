@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
-import { Text, Card, Button, TextInput, ActivityIndicator, FAB, Switch, Chip } from 'react-native-paper';
+import { Text, Card, Button, TextInput, ActivityIndicator, Switch, Chip } from 'react-native-paper';
 import { Svg, Path } from 'react-native-svg';
 import { collection, doc, getDoc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -45,6 +45,10 @@ const UserManagement = ({ onBack }) => {
   const [canWrite, setCanWrite] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterRole, setFilterRole] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
     loadUsers();
@@ -250,6 +254,22 @@ const UserManagement = ({ onBack }) => {
     return role ? role.name : roleId;
   };
 
+  // Filter users based on search and filters
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.department?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'active' && user.isActive) ||
+      (filterStatus === 'inactive' && !user.isActive);
+    
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
   const UserModal = ({ visible, onDismiss, title, user, onSave, onUserChange, isEditing = false }) => {
     // Local state để tránh re-render modal
     const [localUser, setLocalUser] = useState(() => user || {});
@@ -442,9 +462,103 @@ const UserManagement = ({ onBack }) => {
         </Card.Content>
       </Card>
 
+      {/* Search and Filter Bar */}
+      <Card style={styles.filterCard}>
+        <Card.Content>
+          <View style={styles.filterContainer}>
+            <TextInput
+              mode="outlined"
+              placeholder="Tìm kiếm theo tên, username, email..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+              left={<TextInput.Icon icon="magnify" />}
+            />
+            <View style={styles.filterRow}>
+              <TextInput
+                mode="outlined"
+                label="Lọc theo vai trò"
+                value={filterRole === 'all' ? 'Tất cả' : getRoleName(filterRole)}
+                editable={false}
+                style={styles.filterInput}
+                right={
+                  <TextInput.Icon 
+                    icon="chevron-down" 
+                    onPress={() => {
+                      // Simple dropdown - có thể cải thiện sau
+                    }}
+                  />
+                }
+              />
+              <Chip
+                selected={filterRole === 'all'}
+                onPress={() => setFilterRole('all')}
+                style={styles.filterChip}
+              >
+                Tất cả
+              </Chip>
+              {roles.map(role => (
+                <Chip
+                  key={role.id}
+                  selected={filterRole === role.id}
+                  onPress={() => setFilterRole(role.id)}
+                  style={styles.filterChip}
+                >
+                  {role.name}
+                </Chip>
+              ))}
+            </View>
+            <View style={styles.filterRow}>
+              <Chip
+                selected={filterStatus === 'all'}
+                onPress={() => setFilterStatus('all')}
+                style={styles.filterChip}
+              >
+                Tất cả
+              </Chip>
+              <Chip
+                selected={filterStatus === 'active'}
+                onPress={() => setFilterStatus('active')}
+                style={styles.filterChip}
+              >
+                Hoạt động
+              </Chip>
+              <Chip
+                selected={filterStatus === 'inactive'}
+                onPress={() => setFilterStatus('inactive')}
+                style={styles.filterChip}
+              >
+                Tạm khóa
+              </Chip>
+            </View>
+            {canWrite && (
+              <Button
+                mode="contained"
+                onPress={() => setShowAddModal(true)}
+                style={styles.addButton}
+                icon="plus"
+              >
+                Thêm người dùng
+              </Button>
+            )}
+          </View>
+        </Card.Content>
+      </Card>
+
       {/* Users list */}
       <ScrollView style={styles.usersList}>
-        {users.map((user) => (
+        {filteredUsers.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Card.Content>
+              <Text style={styles.emptyText}>
+                {searchQuery || filterRole !== 'all' || filterStatus !== 'all'
+                  ? 'Không tìm thấy người dùng nào'
+                  : 'Chưa có người dùng nào'}
+              </Text>
+            </Card.Content>
+          </Card>
+        ) : (
+          filteredUsers.map((user) => (
           <Card key={user.id} style={styles.userCard}>
             <Card.Content>
               <View style={styles.userHeader}>
@@ -512,18 +626,10 @@ const UserManagement = ({ onBack }) => {
               )}
             </Card.Content>
           </Card>
-        ))}
+          ))
+        )}
       </ScrollView>
 
-      {/* Add button */}
-      {canWrite && (
-        <FAB
-          style={styles.fab}
-          icon="plus"
-          onPress={() => setShowAddModal(true)}
-          label="Thêm người dùng"
-        />
-      )}
 
       {/* Add User Modal */}
       <UserModal
@@ -626,6 +732,42 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: '#666',
+  },
+  filterCard: {
+    margin: 16,
+    marginBottom: 8,
+  },
+  filterContainer: {
+    gap: 12,
+  },
+  searchInput: {
+    marginBottom: 8,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
+  filterInput: {
+    flex: 1,
+    minWidth: 150,
+  },
+  filterChip: {
+    marginRight: 4,
+  },
+  addButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  emptyCard: {
+    margin: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+    fontSize: 16,
+    padding: 20,
   },
   usersList: {
     flex: 1,

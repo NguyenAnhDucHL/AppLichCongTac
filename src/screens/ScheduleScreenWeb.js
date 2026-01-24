@@ -1,19 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, ImageBackground, TouchableOpacity, Linking } from 'react-native';
 import { Text, Card, ActivityIndicator, Title, Paragraph } from 'react-native-paper';
 import { format, isToday, parseISO, addDays as addDaysFns } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import LoginScreen from './LoginScreen';
-import AdminDashboard from './AdminDashboard';
-import { getCurrentUser, logout } from '../services/AuthService';
+import { useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '../services/AuthService';
 
-const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDaysData = {} }) => {
+const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDaysData = {}, onQuanTriClick, onLogout }) => {
   const today = format(new Date(), "EEEE, 'ngày' dd/MM/yyyy", { locale: vi });
   const todayKey = format(new Date(), 'yyyy-MM-dd');
-  const scrollViewRef = React.useRef(null);
-  const [showLogin, setShowLogin] = useState(false);
-  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const scrollViewRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const navigate = useNavigate();
 
   // Kiểm tra session khi component load
   useEffect(() => {
@@ -45,69 +43,23 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
     }
   };
 
-  const handleQuanTriClick = () => {
-    if (currentUser) {
-      // Nếu đã đăng nhập, hiển thị admin dashboard
-      setShowAdminDashboard(true);
+  const handleQuanTriClick = async () => {
+    if (onQuanTriClick) {
+      onQuanTriClick();
     } else {
-      // Nếu chưa đăng nhập, hiển thị login screen
-      setShowLogin(true);
+      // Fallback nếu không có prop - tự kiểm tra và navigate
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          navigate('/app/admin');
+        } else {
+          navigate('/app/login', { state: { from: { pathname: '/app/admin' } } });
+        }
+      } catch (error) {
+        navigate('/app/login', { state: { from: { pathname: '/app/admin' } } });
+      }
     }
   };
-
-  const handleLogin = (user) => {
-    // Đăng nhập thành công
-    console.log('Login successful:', user);
-    setCurrentUser(user);
-    setShowLogin(false);
-    setShowAdminDashboard(true);
-  };
-
-  const handleBackFromLogin = () => {
-    setShowLogin(false);
-  };
-
-  const handleLogout = async () => {
-    try {
-      console.log('🔄 Logging out from ScheduleScreenWeb...');
-      await logout();
-      // Clear tất cả state để quay về trang chủ
-      setCurrentUser(null);
-      setShowAdminDashboard(false);
-      setShowLogin(false);
-      console.log('✅ Logout successful, returned to home page');
-    } catch (error) {
-      console.error('❌ Logout error:', error);
-      // Vẫn clear state để user có thể quay về trang chủ dù có lỗi
-      setCurrentUser(null);
-      setShowAdminDashboard(false);
-      setShowLogin(false);
-    }
-  };
-
-  const handleBackFromAdmin = () => {
-    setShowAdminDashboard(false);
-  };
-
-  // Hiển thị admin dashboard nếu đã đăng nhập và showAdminDashboard là true
-  if (showAdminDashboard && currentUser) {
-    return (
-      <AdminDashboard
-        onLogout={handleLogout}
-        onBack={handleBackFromAdmin}
-      />
-    );
-  }
-
-  // Hiển thị login screen nếu showLogin là true
-  if (showLogin) {
-    return (
-      <LoginScreen 
-        onLogin={handleLogin}
-        onBack={handleBackFromLogin}
-      />
-    );
-  }
 
   if (loading && !refreshing) {
     return (
