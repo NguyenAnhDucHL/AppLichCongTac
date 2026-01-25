@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
-import { Text, Card, TextInput, Button, ActivityIndicator, Avatar, Switch, Divider } from 'react-native-paper';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Image, Modal } from 'react-native';
+import { Text, Card, TextInput, Button, ActivityIndicator, Avatar, Switch, Divider, Portal } from 'react-native-paper';
 import { Svg, Path } from 'react-native-svg';
+import * as ImagePicker from 'expo-image-picker';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getCurrentUser, logout, hashPassword } from '../services/AuthService';
@@ -49,6 +50,10 @@ const ProfileSettings = ({ onBack }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+  const [showViewAvatarModal, setShowViewAvatarModal] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -79,6 +84,8 @@ const ProfileSettings = ({ onBack }) => {
             avatarInitials: userData.avatarInitials || userData.fullName?.charAt(0) || 'U',
             avatarColor: userData.avatarColor || '#1976d2'
           });
+          // Ưu tiên Base64, fallback về URL
+          setAvatarUrl(userData.avatarBase64 || userData.avatarUrl || null);
         }
       }
     } catch (error) {
@@ -134,6 +141,8 @@ const ProfileSettings = ({ onBack }) => {
         pushNotifications: profile.pushNotifications,
         avatarInitials: profile.avatarInitials,
         avatarColor: profile.avatarColor,
+        avatarBase64: typeof avatarUrl === 'string' && avatarUrl.startsWith('data:') ? avatarUrl : null,
+        avatarUrl: typeof avatarUrl === 'string' && !avatarUrl.startsWith('data:') ? avatarUrl : null,
         updatedAt: new Date()
       };
 
@@ -202,6 +211,230 @@ const ProfileSettings = ({ onBack }) => {
     }
   };
 
+  // Request permission và chọn ảnh
+  const pickImage = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // Web: Sử dụng input file
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+              Alert.alert('Lỗi', 'Kích thước ảnh không được vượt quá 5MB');
+              return;
+            }
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+              Alert.alert('Lỗi', 'Vui lòng chọn file ảnh');
+              return;
+            }
+
+            // Create preview URL
+            const imageUrl = URL.createObjectURL(file);
+            await uploadImageFromFile(file, imageUrl);
+          }
+        };
+        input.click();
+      } else {
+        // Mobile: Sử dụng expo-image-picker
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để chọn ảnh đại diện');
+          return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets && result.assets[0]) {
+          await uploadImage(result.assets[0].uri);
+        }
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Lỗi', 'Không thể chọn ảnh');
+    }
+  };
+
+  // Convert file to Base64 và resize nếu cần
+  const fileToBase64 = (file, maxSizeKB = 500) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const base64 = e.target.result;
+        // Kiểm tra kích thước (Base64 lớn hơn file gốc ~33%)
+        const sizeInKB = (base64.length * 3) / 4 / 1024;
+        
+        if (sizeInKB > maxSizeKB) {
+          // Resize ảnh nếu quá lớn
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            
+            // Tính toán kích thước mới để đạt maxSizeKB
+            const ratio = Math.sqrt((maxSizeKB * 1024) / (width * height * 4));
+            width = Math.floor(width * ratio);
+            height = Math.floor(height * ratio);
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Convert về Base64 với quality 0.8
+            const resizedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            resolve(resizedBase64);
+          };
+          img.onerror = reject;
+          img.src = base64;
+        } else {
+          resolve(base64);
+        }
+      };
+      
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Upload ảnh từ file (cho web) - Lưu dạng Base64 vào Firestore
+  const uploadImageFromFile = async (file, previewUrl) => {
+    if (!currentUser) return;
+
+    try {
+      setUploading(true);
+
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        Alert.alert('Lỗi', 'Kích thước ảnh không được vượt quá 2MB');
+        return;
+      }
+
+      // Convert to Base64 và resize nếu cần
+      const base64String = await fileToBase64(file, 500); // Max 500KB sau khi resize
+
+      // Revoke preview URL
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
+      // Lưu Base64 vào Firestore
+      await updateDoc(doc(db, 'users', currentUser.id), {
+        avatarBase64: base64String,
+        avatarUrl: null, // Clear old URL if exists
+        updatedAt: new Date()
+      });
+
+      // Cập nhật state để hiển thị ảnh
+      setAvatarUrl(base64String);
+
+      Alert.alert('Thành công', 'Ảnh đại diện đã được cập nhật');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Upload ảnh (cho mobile) - Lưu dạng Base64 vào Firestore
+  const uploadImage = async (imageUri) => {
+    if (!currentUser) return;
+
+    try {
+      setUploading(true);
+
+      // Fetch ảnh và convert sang Base64
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      
+      // Convert blob to Base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result;
+        
+        // Kiểm tra kích thước
+        const sizeInKB = (base64String.length * 3) / 4 / 1024;
+        if (sizeInKB > 500) {
+          Alert.alert('Lỗi', 'Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn.');
+          setUploading(false);
+          return;
+        }
+
+        // Lưu Base64 vào Firestore
+        await updateDoc(doc(db, 'users', currentUser.id), {
+          avatarBase64: base64String,
+          avatarUrl: null, // Clear old URL if exists
+          updatedAt: new Date()
+        });
+
+        // Cập nhật state
+        setAvatarUrl(base64String);
+
+        Alert.alert('Thành công', 'Ảnh đại diện đã được cập nhật');
+        setUploading(false);
+      };
+      reader.onerror = () => {
+        Alert.alert('Lỗi', 'Không thể đọc ảnh');
+        setUploading(false);
+      };
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
+      setUploading(false);
+    }
+  };
+
+  // Xóa ảnh đại diện
+  const deleteAvatar = async () => {
+    if (!avatarUrl || !currentUser) return;
+
+    Alert.alert(
+      'Xác nhận',
+      'Bạn có chắc chắn muốn xóa ảnh đại diện?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setUploading(true);
+
+              // Xóa Base64 và URL từ Firestore
+              await updateDoc(doc(db, 'users', currentUser.id), {
+                avatarBase64: null,
+                avatarUrl: null,
+                updatedAt: new Date()
+              });
+
+              setAvatarUrl(null);
+              Alert.alert('Thành công', 'Ảnh đại diện đã được xóa');
+            } catch (error) {
+              console.error('Error deleting avatar:', error);
+              Alert.alert('Lỗi', 'Không thể xóa ảnh');
+            } finally {
+              setUploading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -226,11 +459,90 @@ const ProfileSettings = ({ onBack }) => {
         {/* Avatar Section */}
         <Card style={styles.avatarCard}>
           <Card.Content style={styles.avatarSection}>
-            <Avatar.Text
-              size={80}
-              label={profile.avatarInitials}
-              style={[styles.avatar, { backgroundColor: profile.avatarColor }]}
-            />
+            <View style={styles.avatarContainer}>
+              <TouchableOpacity
+                onPress={() => setShowAvatarMenu(true)}
+                activeOpacity={0.8}
+                disabled={uploading}
+              >
+                {avatarUrl ? (
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={[styles.avatarImage, { backgroundColor: profile.avatarColor }]}
+                  />
+                ) : (
+                  <Avatar.Text
+                    size={80}
+                    label={profile.avatarInitials}
+                    style={[styles.avatar, { backgroundColor: profile.avatarColor }]}
+                  />
+                )}
+                {uploading && (
+                  <View style={styles.avatarOverlay}>
+                    <ActivityIndicator size="small" color="#fff" />
+                  </View>
+                )}
+                {!uploading && (
+                  <View style={styles.avatarCameraIcon}>
+                    <Avatar.Icon size={24} icon="camera" style={styles.cameraIcon} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+            
+            {/* Avatar Menu (Facebook style) - Positioned near avatar */}
+            {showAvatarMenu && (
+              <Portal>
+                <>
+                  <TouchableOpacity
+                    style={styles.menuBackdrop}
+                    activeOpacity={1}
+                    onPress={() => setShowAvatarMenu(false)}
+                  />
+                  <View style={styles.avatarMenuWrapper}>
+                    <View style={styles.avatarMenuContainer}>
+                      <View style={styles.menuPointer} />
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                          setShowAvatarMenu(false);
+                          if (avatarUrl) {
+                            setShowViewAvatarModal(true);
+                          } else {
+                            Alert.alert('Thông báo', 'Bạn chưa có ảnh đại diện');
+                          }
+                        }}
+                      >
+                        <Avatar.Icon size={20} icon="account" style={styles.menuIcon} />
+                        <Text style={styles.menuItemText}>Xem ảnh đại diện</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                          setShowAvatarMenu(false);
+                          pickImage();
+                        }}
+                      >
+                        <Avatar.Icon size={20} icon="image" style={styles.menuIcon} />
+                        <Text style={styles.menuItemText}>Chọn ảnh đại diện</Text>
+                      </TouchableOpacity>
+                      {avatarUrl && (
+                        <TouchableOpacity
+                          style={[styles.menuItem, styles.menuItemDelete]}
+                          onPress={() => {
+                            setShowAvatarMenu(false);
+                            deleteAvatar();
+                          }}
+                        >
+                          <Avatar.Icon size={20} icon="delete" style={styles.menuIconDelete} />
+                          <Text style={[styles.menuItemText, styles.menuItemTextDelete]}>Xóa ảnh đại diện</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                </>
+              </Portal>
+            )}
             <View style={styles.avatarInfo}>
               <Text style={styles.avatarName}>{profile.fullName}</Text>
               <Text style={styles.avatarRole}>
@@ -241,10 +553,46 @@ const ProfileSettings = ({ onBack }) => {
           </Card.Content>
         </Card>
 
+        {/* View Avatar Modal */}
+        <Modal
+          visible={showViewAvatarModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowViewAvatarModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowViewAvatarModal(false)}
+          >
+            <View style={styles.viewAvatarContainer}>
+              {avatarUrl && (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.viewAvatarImage}
+                  resizeMode="contain"
+                />
+              )}
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowViewAvatarModal(false)}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
         {/* Avatar Customization */}
         <Card style={styles.settingCard}>
           <Card.Content>
             <Text style={styles.settingTitle}>Tùy chỉnh Avatar</Text>
+            
+            <Text style={styles.avatarHint}>
+              {avatarUrl 
+                ? 'Click vào ảnh đại diện ở trên để xem hoặc thay đổi ảnh'
+                : 'Click vào avatar ở trên để chọn ảnh, hoặc tùy chỉnh avatar với initials và màu sắc bên dưới'}
+            </Text>
             
             <TextInput
               label="Initials (2 ký tự)"
@@ -253,9 +601,10 @@ const ProfileSettings = ({ onBack }) => {
               style={styles.input}
               mode="outlined"
               maxLength={2}
+              disabled={!!avatarUrl}
             />
             
-            <Text style={styles.label}>Màu avatar:</Text>
+            <Text style={styles.label}>Màu avatar (khi không có ảnh):</Text>
             <View style={styles.colorPicker}>
               {getAvatarColors().map(color => (
                 <TouchableOpacity
@@ -266,6 +615,7 @@ const ProfileSettings = ({ onBack }) => {
                     profile.avatarColor === color && styles.selectedColor
                   ]}
                   onPress={() => updateProfile('avatarColor', color)}
+                  disabled={!!avatarUrl}
                 />
               ))}
             </View>
@@ -524,11 +874,162 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 16,
+  },
   avatar: {
     marginRight: 16,
   },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: 16,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  avatarCameraIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#1976d2',
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  cameraIcon: {
+    backgroundColor: 'transparent',
+  },
+  menuBackdrop: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 998,
+    backgroundColor: 'transparent',
+  },
+  avatarMenuWrapper: {
+    position: 'fixed',
+    top: 100,
+    left: 20,
+    zIndex: 999,
+  },
+  avatarMenuContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 200,
+    overflow: 'visible',
+    position: 'relative',
+  },
+  menuPointer: {
+    position: 'absolute',
+    top: -8,
+    left: 60,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#fff',
+    zIndex: 1000,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    paddingHorizontal: 16,
+  },
+  menuItemDelete: {
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  menuIcon: {
+    backgroundColor: 'transparent',
+    marginRight: 12,
+  },
+  menuIconDelete: {
+    backgroundColor: 'transparent',
+    marginRight: 12,
+  },
+  menuItemText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  menuItemTextDelete: {
+    color: '#d32f2f',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewAvatarContainer: {
+    width: '90%',
+    maxWidth: 500,
+    position: 'relative',
+  },
+  viewAvatarImage: {
+    width: '100%',
+    height: '80%',
+    maxHeight: 500,
+    borderRadius: 8,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: -40,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
   avatarInfo: {
     flex: 1,
+  },
+  avatarActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  avatarButton: {
+    flex: 1,
+  },
+  avatarHint: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 16,
   },
   avatarName: {
     fontSize: 20,

@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Avatars folder - allow read/write for all users (tạm thời)
+    // TODO: Implement Firebase Auth để có security tốt hơn
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if true; // Tạm thời cho phép write, sẽ thay bằng auth check sau
+    }
+    
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

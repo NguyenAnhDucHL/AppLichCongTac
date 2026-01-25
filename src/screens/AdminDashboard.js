@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Image } from 'react-native';
 import { Text, Card, Avatar, Divider, Button, ActivityIndicator, Menu } from 'react-native-paper';
+import { useLocation } from 'react-router-dom';
 import { logout, getCurrentUser, hasPermission } from '../services/AuthService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import ScheduleManagement from './ScheduleManagement';
 import UserManagement from './UserManagement';
 import ReportsAnalytics from './ReportsAnalytics';
@@ -21,16 +24,42 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
     monthEvents: 0,
     totalUsers: 0
   });
+  
+  // Sử dụng useLocation để detect khi quay lại từ ProfileSettings
+  const location = useLocation();
 
   useEffect(() => {
     loadUserData();
     loadStats();
   }, []);
 
+  // Reload user data khi quay lại từ ProfileSettings
+  useEffect(() => {
+    // Khi location.pathname là /app/admin và không phải lần đầu mount
+    if (location.pathname === '/app/admin' && currentScreen === 'dashboard' && user) {
+      loadUserData();
+    }
+  }, [location.pathname]);
+
   const loadUserData = async () => {
     try {
       const userData = await getCurrentUser();
-      setUser(userData);
+      if (userData) {
+        // Load full user data từ Firestore để có avatarBase64/avatarUrl mới nhất
+        const userDoc = await getDoc(doc(db, 'users', userData.id));
+        if (userDoc.exists()) {
+          const fullUserData = userDoc.data();
+          setUser({
+            ...userData,
+            ...fullUserData,
+            id: userData.id,
+            // Ưu tiên Base64, fallback về URL
+            avatarUrl: fullUserData.avatarBase64 || fullUserData.avatarUrl || null
+          });
+        } else {
+          setUser(userData);
+        }
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
       Alert.alert('Lỗi', 'Không thể tải thông tin người dùng');
@@ -132,7 +161,15 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
   }
 
   if (currentScreen === 'profile') {
-    return <ProfileSettings onBack={() => setCurrentScreen('dashboard')} />;
+    return (
+      <ProfileSettings 
+        onBack={() => {
+          setCurrentScreen('dashboard');
+          // Reload user data khi quay lại để hiển thị avatar mới
+          loadUserData();
+        }} 
+      />
+    );
   }
 
   if (loading) {
@@ -162,22 +199,36 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
                 style={styles.googleUserTrigger}
                 onPress={() => setShowUserMenu(true)}
               >
-                <Avatar.Text 
-                  size={36} 
-                  label={user?.avatarInitials || user?.fullName?.charAt(0) || 'A'}
-                  style={[styles.googleAvatar, { backgroundColor: user?.avatarColor || '#1976d2' }]}
-                />
+                {user?.avatarUrl ? (
+                  <Image
+                    source={{ uri: user.avatarUrl }}
+                    style={[styles.googleAvatarImage, { backgroundColor: user?.avatarColor || '#1976d2' }]}
+                  />
+                ) : (
+                  <Avatar.Text 
+                    size={36} 
+                    label={user?.avatarInitials || user?.fullName?.charAt(0) || 'A'}
+                    style={[styles.googleAvatar, { backgroundColor: user?.avatarColor || '#1976d2' }]}
+                  />
+                )}
               </TouchableOpacity>
             }
             contentStyle={styles.googleMenuContent}
           >
             {/* User Info Section */}
             <View style={styles.googleMenuHeader}>
-              <Avatar.Text 
-                size={48} 
-                label={user?.avatarInitials || user?.fullName?.charAt(0) || 'A'}
-                style={[styles.googleMenuAvatar, { backgroundColor: user?.avatarColor || '#1976d2' }]}
-              />
+              {user?.avatarUrl ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={[styles.googleMenuAvatarImage, { backgroundColor: user?.avatarColor || '#1976d2' }]}
+                />
+              ) : (
+                <Avatar.Text 
+                  size={48} 
+                  label={user?.avatarInitials || user?.fullName?.charAt(0) || 'A'}
+                  style={[styles.googleMenuAvatar, { backgroundColor: user?.avatarColor || '#1976d2' }]}
+                />
+              )}
               <View style={styles.googleUserInfo}>
                 <Text style={styles.googleUserName}>{user?.fullName || 'Người dùng'}</Text>
                 <Text style={styles.googleUserEmail}>{user?.email || 'email@example.com'}</Text>
@@ -387,6 +438,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
   },
+  googleAvatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
   googleMenuContent: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -409,6 +467,12 @@ const styles = StyleSheet.create({
   googleMenuAvatar: {
     marginRight: 12,
     backgroundColor: '#4285f4',
+  },
+  googleMenuAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
   },
   googleUserInfo: {
     flex: 1,
