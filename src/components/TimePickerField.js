@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Platform, TouchableOpacity, View } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { ClockIcon } from './PlatformIcon';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -122,7 +123,7 @@ export default function TimePickerField({
         disabled={disabled}
         error={error}
         helperText={helperText}
-        right={<TextInput.Icon icon="clock-outline" />}
+        right={<TextInput.Icon icon={() => <ClockIcon size={24} color="#666" />} />}
         keyboardType="numeric"
       />
     );
@@ -140,7 +141,7 @@ export default function TimePickerField({
             disabled={disabled}
             error={error}
             helperText={helperText}
-            right={<TextInput.Icon icon="clock-outline" />}
+            right={<TextInput.Icon icon={() => <ClockIcon size={24} color="#666" />} />}
           />
         </View>
       </TouchableOpacity>

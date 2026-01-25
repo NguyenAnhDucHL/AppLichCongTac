@@ -8,6 +8,7 @@ import { db } from '../config/firebase';
 import { hasPermission } from '../services/AuthService';
 import TimePickerField from '../components/TimePickerField';
 import CommonModal from '../components/CommonModal';
+import { PlusIcon, EditIcon, DeleteIcon } from '../components/PlatformIcon';
 
 const ScheduleManagement = ({ onBack }) => {
   const [schedules, setSchedules] = useState({});
@@ -579,10 +580,7 @@ const ScheduleManagement = ({ onBack }) => {
                     <Text style={styles.eventTime}>{event.time}</Text>
                     <View style={styles.eventActions}>
                       <HoverTooltip text="Chỉnh sửa">
-                        <IconButton
-                          icon="square-edit-outline"
-                          iconColor="#004bff"
-                          size={28}
+                        <TouchableOpacity
                           onPress={() => {
                             if (canWrite) {
                               setEditingEvent(event);
@@ -595,13 +593,13 @@ const ScheduleManagement = ({ onBack }) => {
                             }
                           }}
                           style={styles.iconButton}
-                        />
+                          activeOpacity={0.7}
+                        >
+                          <EditIcon size={28} color="#004bff" />
+                        </TouchableOpacity>
                       </HoverTooltip>
                       <HoverTooltip text="Xóa">
-                        <IconButton
-                          icon="delete-outline"
-                          iconColor="#ff0000"
-                          size={28}
+                        <TouchableOpacity
                           onPress={() => {
                             if (canDelete) {
                               handleDeleteEvent(event.id);
@@ -613,7 +611,10 @@ const ScheduleManagement = ({ onBack }) => {
                             }
                           }}
                           style={styles.iconButton}
-                        />
+                          activeOpacity={0.7}
+                        >
+                          <DeleteIcon size={28} color="#ff0000" />
+                        </TouchableOpacity>
                       </HoverTooltip>
                     </View>
                   </View>
@@ -634,7 +635,7 @@ const ScheduleManagement = ({ onBack }) => {
       {canWrite && (
         <FAB
           style={styles.fab}
-          icon="plus"
+          icon={() => <PlusIcon size={24} color="#fff" />}
           onPress={() => setShowAddModal(true)}
           label="Thêm sự kiện"
         />

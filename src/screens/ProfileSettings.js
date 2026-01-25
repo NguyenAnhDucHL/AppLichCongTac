@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Image, Modal } from 'react-native';
 import { Text, Card, TextInput, Button, ActivityIndicator, Avatar, Switch, Divider, Portal } from 'react-native-paper';
 import { Svg, Path } from 'react-native-svg';
+import { CameraIcon } from '../components/PlatformIcon';
 import * as ImagePicker from 'expo-image-picker';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -27,6 +28,7 @@ const EyeOffIcon = ({ size = 24, color = '#666' }) => (
     />
   </Svg>
 );
+
 
 const ProfileSettings = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
@@ -484,7 +486,7 @@ const ProfileSettings = ({ onBack }) => {
                 )}
                 {!uploading && (
                   <View style={styles.avatarCameraIcon}>
-                    <Avatar.Icon size={24} icon="camera" style={styles.cameraIcon} />
+                    <CameraIcon size={16} color="#fff" style={styles.cameraIcon} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -635,25 +637,23 @@ const ProfileSettings = ({ onBack }) => {
               mode="outlined"
             />
             
-            <TextInput
-              label="Email *"
-              value={profile.email}
-              onChangeText={(text) => updateProfile('email', text)}
-              style={styles.input}
-              mode="outlined"
-              keyboardType="email-address"
-              editable={false}
-              right={<TextInput.Icon icon="lock" />}
-            />
-            
-            <TextInput
-              label="Tên đăng nhập"
-              value={profile.username}
-              style={styles.input}
-              mode="outlined"
-              editable={false}
-              right={<TextInput.Icon icon="lock" />}
-            />
+                <TextInput
+                  label="Email *"
+                  value={profile.email}
+                  onChangeText={(text) => updateProfile('email', text)}
+                  style={styles.input}
+                  mode="outlined"
+                  keyboardType="email-address"
+                  editable={false}
+                />
+                
+                <TextInput
+                  label="Tên đăng nhập"
+                  value={profile.username}
+                  style={styles.input}
+                  mode="outlined"
+                  editable={false}
+                />
             
             <TextInput
               label="Phòng ban"

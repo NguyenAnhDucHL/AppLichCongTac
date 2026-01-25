@@ -11,6 +11,14 @@ import ReportsAnalytics from './ReportsAnalytics';
 import SystemSettings from './SystemSettings';
 import ProfileSettings from './ProfileSettings';
 import CommonModal from '../components/CommonModal';
+import { 
+  CalendarEditIcon, 
+  AccountGroupIcon, 
+  ChartLineIcon, 
+  CogIcon, 
+  ChevronRightIcon,
+  AccountIcon
+} from '../components/PlatformIcon';
 
 const AdminDashboard = ({ onLogout, onBack, navigate }) => {
   const [user, setUser] = useState(null);
@@ -123,15 +131,25 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
 
     if (!hasAccess) return null;
 
+    // Map icon names to PlatformIcon components
+    const iconMap = {
+      'calendar-edit': CalendarEditIcon,
+      'account-group': AccountGroupIcon,
+      'chart-line': ChartLineIcon,
+      'cog': CogIcon,
+    };
+    
+    const IconComponent = iconMap[icon] || CalendarEditIcon;
+
     return (
       <TouchableOpacity style={styles.menuItem} onPress={onPress}>
         <View style={styles.menuContent}>
-          <Avatar.Icon size={40} icon={icon} style={styles.menuIcon} />
+          <IconComponent size={40} color="#1976d2" style={styles.menuIcon} />
           <View style={styles.menuText}>
             <Text style={styles.menuTitle}>{title}</Text>
             <Text style={styles.menuDescription}>{description}</Text>
           </View>
-          <Avatar.Icon size={24} icon="chevron-right" style={styles.chevron} />
+          <ChevronRightIcon size={24} color="#666" style={styles.chevron} />
         </View>
       </TouchableOpacity>
     );
@@ -246,7 +264,7 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
                   setCurrentScreen('profile');
                 }}
               >
-                <Avatar.Icon size={20} icon="account" style={styles.googleMenuIcon} />
+                <AccountIcon size={20} color="#666" style={styles.googleMenuIcon} />
                 <Text style={styles.googleMenuText}>Quản lý tài khoản</Text>
               </TouchableOpacity>
 
@@ -257,7 +275,7 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
                   setCurrentScreen('settings');
                 }}
               >
-                <Avatar.Icon size={20} icon="cog" style={styles.googleMenuIcon} />
+                <CogIcon size={20} color="#666" style={styles.googleMenuIcon} />
                 <Text style={styles.googleMenuText}>Cài đặt hệ thống</Text>
               </TouchableOpacity>
             </View>
