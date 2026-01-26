@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, ImageBackground, TouchableOpacity, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, TouchableOpacity, Linking } from 'react-native';
 import { Text, Card, ActivityIndicator, Title, Paragraph } from 'react-native-paper';
 import { format, isToday, parseISO, addDays as addDaysFns } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -83,27 +83,33 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
 
   return (
     <View style={styles.container}>
-      {/* Header giống website */}
-      <ImageBackground 
-        source={require('../../assets/images/bg.png')} 
-        style={styles.header}
-        resizeMode="cover"
-        imageStyle={styles.headerBackgroundImage}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerText}>
-            <Text style={styles.mainTitle}>LỊCH CÔNG TÁC</Text>
-            <Text style={styles.subTitle}>UBND PHƯỜNG CẨM PHẢ</Text>
-          </View>
-          <View style={styles.logoContainer}>
-            <Image 
-              source={require('../../assets/images/bg.png')} 
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+      {/* Header với banner */}
+      <View style={styles.headerContainer}>
+        {/* Banner lớn với overlay: noimage4.jpg */}
+        <View style={styles.largeBannerContainer}>
+          <Image 
+            source={require('../../assets/images/noimage4.jpg')} 
+            style={styles.largeBanner}
+            resizeMode="cover"
+          />
+          {/* Overlay: Banner nhỏ bên trái + Text bên phải */}
+          <View style={styles.bannerOverlay}>
+            <View style={styles.bannerOverlayContent}>
+              {/* Banner nhỏ bên trái (Emblem) */}
+              <Image 
+                source={require('../../assets/images/banner-n1-cdn.png')} 
+                style={styles.smallBanner}
+                resizeMode="contain"
+              />
+              {/* Text ở giữa/bên phải */}
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.mainTitle}>LỊCH CÔNG TÁC</Text>
+                <Text style={styles.subTitle}>UBND PHƯỜNG CẨM PHẢ</Text>
+              </View>
+            </View>
           </View>
         </View>
-      </ImageBackground>
+      </View>
 
       {/* Navigation Bar */}
       <View style={styles.navBar}>
@@ -215,6 +221,59 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#666',
+  },
+  headerContainer: {
+    width: '100%',
+    position: 'relative',
+  },
+  largeBannerContainer: {
+    width: '100%',
+    position: 'relative',
+    overflow: 'hidden', // Đảm bảo ảnh không tràn ra ngoài
+    maxWidth: 1200, // Giới hạn width giống navBar
+    alignSelf: 'center', // Căn giữa
+  },
+  largeBanner: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#f5f5f5',
+    resizeMode: 'cover', // Cover để ảnh phủ đầy như design
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 15,
+  },
+  bannerOverlayContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 1200,
+    paddingHorizontal: 40, // Cùng padding với navBar
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    overflow: 'hidden', // Ngăn text tràn ra ngoài
+    flex: 1, // Chiếm toàn bộ không gian
+  },
+  smallBanner: {
+    width: 1260, // 1050 * 1.2 = 1260 (tăng 20%)
+    height: 540, // 450 * 1.2 = 540 (tăng 20%)
+    marginLeft: -200, // Lùi sang bên trái (âm để lùi ra ngoài container)
+    flexShrink: 0,
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    minWidth: 0, // Đảm bảo flex hoạt động đúng
+    marginLeft: 100, // Lùi sang bên trái 100px từ smallBanner
+    flexShrink: 1, // Cho phép shrink nếu cần
+    overflow: 'hidden', // Ngăn text tràn ra ngoài
   },
   header: {
     backgroundColor: '#fff', // Nền trắng (fallback)

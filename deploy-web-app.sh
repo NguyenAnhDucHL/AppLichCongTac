@@ -32,16 +32,22 @@ rm -rf public/app
 mkdir -p public/app
 cp -r web-build/* public/app/
 
-# Bước 2.5: Sửa script path (từ /_expo thành /app/_expo)
+# Bước 2.5: Sửa script path (từ /_expo thành /app/_expo) và assets path
 echo "🔧 Fixing script paths..."
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
     sed -i '' 's|src="/_expo|src="/app/_expo|g' public/app/index.html
     sed -i '' 's|href="/_expo|href="/app/_expo|g' public/app/index.html
+    # Sửa đường dẫn assets trong JS files
+    find public/app -name "*.js" -type f -exec sed -i '' 's|"/assets/|"/app/assets/|g' {} +
+    find public/app -name "*.js" -type f -exec sed -i '' "s|'/assets/|'/app/assets/|g" {} +
 else
     # Linux
     sed -i 's|src="/_expo|src="/app/_expo|g' public/app/index.html
     sed -i 's|href="/_expo|href="/app/_expo|g' public/app/index.html
+    # Sửa đường dẫn assets trong JS files
+    find public/app -name "*.js" -type f -exec sed -i 's|"/assets/|"/app/assets/|g' {} +
+    find public/app -name "*.js" -type f -exec sed -i "s|'/assets/|'/app/assets/|g" {} +
 fi
 
 # Bước 3: Deploy
