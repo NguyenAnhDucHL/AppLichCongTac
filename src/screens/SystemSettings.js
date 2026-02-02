@@ -4,10 +4,14 @@ import { Text, Card, Switch, TextInput, Button, ActivityIndicator, Divider } fro
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { hasPermission, getCurrentUser } from '../services/AuthService';
+import CommonModal from '../components/CommonModal';
 
 const SystemSettings = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+  const [showResetSuccessModal, setShowResetSuccessModal] = useState(false);
   const [settings, setSettings] = useState({
     siteName: 'Lịch Công Tác UBND Phường Cẩm Phả',
     allowPublicView: true,
@@ -72,7 +76,7 @@ const SystemSettings = ({ onBack }) => {
         updatedAt: new Date(),
         updatedBy: currentUser?.id || 'admin'
       });
-      Alert.alert('Thành công', 'Đã lưu cài đặt hệ thống');
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error saving settings:', error);
       Alert.alert('Lỗi', 'Không thể lưu cài đặt');
@@ -82,33 +86,44 @@ const SystemSettings = ({ onBack }) => {
   };
 
   const resetToDefaults = () => {
-    Alert.alert(
-      'Khôi phục mặc định',
-      'Bạn có chắc chắn muốn khôi phục tất cả cài đặt về mặc định?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Khôi phục',
-          style: 'destructive',
-          onPress: () => {
-            setSettings({
-              siteName: 'Lịch Công Tác UBND Phường Cẩm Phả',
-              allowPublicView: true,
-              maxEventsPerDay: 20,
-              defaultEventDuration: 60,
-              notificationEnabled: true,
-              maintenanceMode: false,
-              autoBackup: true,
-              backupFrequency: 'daily',
-              emailNotifications: true,
-              maxLoginAttempts: 5,
-              sessionTimeout: 24,
-              debugMode: false
-            });
-          }
-        }
-      ]
-    );
+    setShowResetConfirmModal(true);
+  };
+
+  const handleConfirmReset = async () => {
+    try {
+      setSaving(true);
+      const defaultSettings = {
+        siteName: 'Lịch Công Tác UBND Phường Cẩm Phả',
+        allowPublicView: true,
+        maxEventsPerDay: 20,
+        defaultEventDuration: 60,
+        notificationEnabled: true,
+        maintenanceMode: false,
+        autoBackup: true,
+        backupFrequency: 'daily',
+        emailNotifications: true,
+        maxLoginAttempts: 5,
+        sessionTimeout: 24,
+        debugMode: false
+      };
+      
+      setSettings(defaultSettings);
+      
+      // Lưu vào database
+      await setDoc(doc(db, 'system_settings', 'app_config'), {
+        ...defaultSettings,
+        updatedAt: new Date(),
+        updatedBy: currentUser?.id || 'admin'
+      });
+      
+      setShowResetConfirmModal(false);
+      setShowResetSuccessModal(true);
+    } catch (error) {
+      console.error('Error resetting settings:', error);
+      Alert.alert('Lỗi', 'Không thể khôi phục cài đặt mặc định');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateSetting = (key, value) => {
@@ -359,6 +374,44 @@ const SystemSettings = ({ onBack }) => {
           </View>
         )}
       </ScrollView>
+
+      {/* Success Modal - Save Settings */}
+      <CommonModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Thành công"
+        message="Đã lưu cài đặt hệ thống"
+        confirmText="Đóng"
+        showCancel={false}
+        confirmButtonStyle="success"
+        onConfirm={() => setShowSuccessModal(false)}
+      />
+
+      {/* Confirm Reset Modal */}
+      <CommonModal
+        visible={showResetConfirmModal}
+        onClose={() => setShowResetConfirmModal(false)}
+        title="Khôi phục mặc định"
+        message="Bạn có chắc chắn muốn khôi phục tất cả cài đặt về mặc định?"
+        confirmText="Khôi phục"
+        cancelText="Hủy"
+        showCancel={true}
+        confirmButtonStyle="danger"
+        onConfirm={handleConfirmReset}
+        onCancel={() => setShowResetConfirmModal(false)}
+      />
+
+      {/* Reset Success Modal */}
+      <CommonModal
+        visible={showResetSuccessModal}
+        onClose={() => setShowResetSuccessModal(false)}
+        title="Thành công"
+        message="Đã khôi phục cài đặt mặc định"
+        confirmText="Đóng"
+        showCancel={false}
+        confirmButtonStyle="success"
+        onConfirm={() => setShowResetSuccessModal(false)}
+      />
     </View>
   );
 };

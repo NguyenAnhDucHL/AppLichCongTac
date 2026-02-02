@@ -6,6 +6,7 @@ import { vi } from 'date-fns/locale';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { hasPermission } from '../services/AuthService';
+import { CheckboxIcon } from '../components/PlatformIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -253,6 +254,7 @@ const ReportsAnalytics = ({ onBack }) => {
             selected={selectedPeriod === period}
             onPress={() => setSelectedPeriod(period)}
             style={styles.periodChip}
+            icon={() => <CheckboxIcon size={18} color="#666" checked={selectedPeriod === period} />}
           >
             {getPeriodLabel(period)}
           </Chip>

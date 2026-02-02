@@ -54,12 +54,12 @@ export default function App() {
     <PaperProvider>
       <SafeAreaView style={styles.container}>
         <StatusBar style="auto" />
-        <ScheduleScreen 
-          scheduleData={scheduleData}
-          loading={loading}
-          onRefresh={onRefresh}
-          refreshing={refreshing}
-        />
+          <ScheduleScreen 
+            scheduleData={scheduleData}
+            loading={loading}
+            onRefresh={onRefresh}
+            refreshing={refreshing}
+          />
         <Portal.Host />
       </SafeAreaView>
     </PaperProvider>

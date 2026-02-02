@@ -90,21 +90,25 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
           <Image 
             source={require('../../assets/images/noimage4.jpg')} 
             style={styles.largeBanner}
-            resizeMode="cover"
+        resizeMode="cover"
           />
           {/* Overlay: Banner nhỏ bên trái + Text bên phải */}
           <View style={styles.bannerOverlay}>
             <View style={styles.bannerOverlayContent}>
-              {/* Banner nhỏ bên trái (Emblem) */}
-              <Image 
-                source={require('../../assets/images/banner-n1-cdn.png')} 
-                style={styles.smallBanner}
-                resizeMode="contain"
-              />
-              {/* Text ở giữa/bên phải */}
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.mainTitle}>LỊCH CÔNG TÁC</Text>
-                <Text style={styles.subTitle}>UBND PHƯỜNG CẨM PHẢ</Text>
+              {/* Banner nhỏ bên trái (Emblem) - từ HOME đến QUẢN LÝ VĂN BẢN ĐIỀU HÀNH */}
+              <View style={styles.smallBannerWrapper}>
+                <Image 
+                  source={require('../../assets/images/banner-n1-cdn.png')} 
+                  style={styles.smallBanner}
+                  resizeMode="contain"
+                />
+              </View>
+              {/* Text ở giữa/bên phải - từ CỔNG THÔNG TIN đến QUẢN TRỊ */}
+              <View style={styles.headerTextWrapper}>
+                <View style={styles.headerTextContainer}>
+            <Text style={styles.mainTitle}>LỊCH CÔNG TÁC</Text>
+            <Text style={styles.subTitle}>UBND PHƯỜNG CẨM PHẢ</Text>
+          </View>
               </View>
             </View>
           </View>
@@ -260,11 +264,23 @@ const styles = StyleSheet.create({
     overflow: 'hidden', // Ngăn text tràn ra ngoài
     flex: 1, // Chiếm toàn bộ không gian
   },
+  smallBannerWrapper: {
+    width: '35%', // Chiều rộng từ HOME đến QUẢN LÝ VĂN BẢN ĐIỀU HÀNH (khoảng 35% của navBar)
+    flexShrink: 0,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    overflow: 'hidden', // Ẩn phần banner tràn ra ngoài wrapper
+  },
   smallBanner: {
     width: 1260, // 1050 * 1.2 = 1260 (tăng 20%)
     height: 540, // 450 * 1.2 = 540 (tăng 20%)
-    marginLeft: -200, // Lùi sang bên trái (âm để lùi ra ngoài container)
     flexShrink: 0,
+  },
+  headerTextWrapper: {
+    width: '65%', // Chiều rộng từ CỔNG THÔNG TIN đến QUẢN TRỊ (khoảng 65% của navBar)
+    flexShrink: 0,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   headerTextContainer: {
     flex: 1,

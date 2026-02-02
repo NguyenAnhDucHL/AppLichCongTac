@@ -5,6 +5,8 @@ import { Svg, Path } from 'react-native-svg';
 import { collection, doc, getDoc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { hasPermission, getCurrentUser, hashPassword } from '../services/AuthService';
+import CommonModal from '../components/CommonModal';
+import { SearchIcon, FilterIcon, PlusIcon, CheckboxIcon } from '../components/PlatformIcon';
 
 // Custom Eye Icon Component
 const EyeIcon = ({ size = 24, color = '#666' }) => (
@@ -32,6 +34,7 @@ const UserManagement = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({
     username: '',
@@ -144,7 +147,7 @@ const UserManagement = ({ onBack }) => {
         isActive: true
       });
       setShowAddModal(false);
-      Alert.alert('Thành công', 'Đã thêm người dùng mới');
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error adding user:', error);
       Alert.alert('Lỗi', 'Không thể thêm người dùng');
@@ -185,7 +188,7 @@ const UserManagement = ({ onBack }) => {
       
       setEditingUser(null);
       setShowEditModal(false);
-      Alert.alert('Thành công', 'Đã cập nhật thông tin người dùng');
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Error updating user:', error);
       Alert.alert('Lỗi', 'Không thể cập nhật người dùng');
@@ -397,6 +400,7 @@ const UserManagement = ({ onBack }) => {
                     selected={localUser.role === role.id}
                     onPress={() => handleLocalChange('role', role.id)}
                     style={styles.chip}
+                    icon={() => <CheckboxIcon size={18} color="#666" checked={localUser.role === role.id} />}
                   >
                     {role.name}
                   </Chip>
@@ -472,7 +476,7 @@ const UserManagement = ({ onBack }) => {
               value={searchQuery}
               onChangeText={setSearchQuery}
               style={styles.searchInput}
-              left={<TextInput.Icon icon="magnify" />}
+              left={<SearchIcon size={24} color="#666" />}
             />
             <View style={styles.filterRow}>
               <TextInput
@@ -482,18 +486,20 @@ const UserManagement = ({ onBack }) => {
                 editable={false}
                 style={styles.filterInput}
                 right={
-                  <TextInput.Icon 
-                    icon="chevron-down" 
+                  <TouchableOpacity
                     onPress={() => {
                       // Simple dropdown - có thể cải thiện sau
                     }}
-                  />
+                  >
+                    <FilterIcon size={24} color="#666" />
+                  </TouchableOpacity>
                 }
               />
               <Chip
                 selected={filterRole === 'all'}
                 onPress={() => setFilterRole('all')}
                 style={styles.filterChip}
+                icon={() => <CheckboxIcon size={18} color="#666" checked={filterRole === 'all'} />}
               >
                 Tất cả
               </Chip>
@@ -503,6 +509,7 @@ const UserManagement = ({ onBack }) => {
                   selected={filterRole === role.id}
                   onPress={() => setFilterRole(role.id)}
                   style={styles.filterChip}
+                  icon={() => <CheckboxIcon size={18} color="#666" checked={filterRole === role.id} />}
                 >
                   {role.name}
                 </Chip>
@@ -513,6 +520,7 @@ const UserManagement = ({ onBack }) => {
                 selected={filterStatus === 'all'}
                 onPress={() => setFilterStatus('all')}
                 style={styles.filterChip}
+                icon={() => <CheckboxIcon size={18} color="#666" checked={filterStatus === 'all'} />}
               >
                 Tất cả
               </Chip>
@@ -536,7 +544,7 @@ const UserManagement = ({ onBack }) => {
                 mode="contained"
                 onPress={() => setShowAddModal(true)}
                 style={styles.addButton}
-                icon="plus"
+                icon={() => <PlusIcon size={24} color="#fff" />}
               >
                 Thêm người dùng
               </Button>
@@ -671,6 +679,18 @@ const UserManagement = ({ onBack }) => {
           handleEditUserWithData(userData);
         }}
         isEditing={true}
+      />
+
+      {/* Success Modal */}
+      <CommonModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Thành công"
+        message="Đã lưu thông tin người dùng"
+        confirmText="Đóng"
+        showCancel={false}
+        confirmButtonStyle="success"
+        onConfirm={() => setShowSuccessModal(false)}
       />
     </View>
   );

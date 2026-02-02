@@ -12,7 +12,11 @@ import {
   MdAdd,
   MdAccessTime,
   MdEdit,
-  MdDelete
+  MdDelete,
+  MdSearch,
+  MdExpandMore,
+  MdCheckBox,
+  MdCheckBoxOutlineBlank
 } from 'react-icons/md';
 
 /**
@@ -71,4 +75,19 @@ export const EditIcon = ({ size = 28, color = '#1976d2', style }) => {
 
 export const DeleteIcon = ({ size = 28, color = '#ff0000', style }) => {
   return renderIcon(MdDelete, 'delete-outline', size, color, style);
+};
+
+export const SearchIcon = ({ size = 24, color = '#666', style }) => {
+  return renderIcon(MdSearch, 'magnify', size, color, style);
+};
+
+export const FilterIcon = ({ size = 24, color = '#666', style }) => {
+  return renderIcon(MdExpandMore, 'chevron-down', size, color, style);
+};
+
+export const CheckboxIcon = ({ size = 24, color = '#666', style, checked = false }) => {
+  if (checked) {
+    return renderIcon(MdCheckBox, 'checkbox-marked', size, color, style);
+  }
+  return renderIcon(MdCheckBoxOutlineBlank, 'checkbox-blank-outline', size, color, style);
 };
