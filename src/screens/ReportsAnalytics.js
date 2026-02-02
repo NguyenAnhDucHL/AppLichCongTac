@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Text, Card, ActivityIndicator, Chip, Button } from 'react-native-paper';
 import { format, subDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -8,9 +8,11 @@ import { db } from '../config/firebase';
 import { hasPermission } from '../services/AuthService';
 import { CheckboxIcon } from '../components/PlatformIcon';
 
-const { width } = Dimensions.get('window');
+const BREAKPOINT_MOBILE = 768;
 
 const ReportsAnalytics = ({ onBack }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < BREAKPOINT_MOBILE;
   const [loading, setLoading] = useState(true);
   const [scheduleStats, setScheduleStats] = useState({});
   const [userStats, setUserStats] = useState({});
@@ -237,17 +239,15 @@ const ReportsAnalytics = ({ onBack }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isMobile && styles.headerMobile]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Quay lại</Text>
+          <Text style={[styles.backButtonText, isMobile && styles.backButtonTextMobile]}>← Quay lại</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Báo cáo & Thống kê</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={[styles.title, isMobile && styles.titleMobile]}>Báo cáo & Thống kê</Text>
+        <View style={[styles.headerSpacer, isMobile && styles.headerSpacerMobile]} />
       </View>
 
-      {/* Period selector */}
-      <View style={styles.periodSelector}>
+      <View style={[styles.periodSelector, isMobile && styles.periodSelectorMobile]}>
         {['week', 'month', 'quarter'].map(period => (
           <Chip
             key={period}
@@ -261,24 +261,23 @@ const ReportsAnalytics = ({ onBack }) => {
         ))}
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Schedule Statistics */}
-        <Text style={styles.sectionTitle}>Thống kê Lịch Công Tác</Text>
+      <ScrollView style={[styles.content, isMobile && styles.contentMobile]}>
+        <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Thống kê Lịch Công Tác</Text>
         
-        <View style={styles.statsGrid}>
-          <Card style={styles.statCard}>
+        <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{scheduleStats.totalEvents || 0}</Text>
               <Text style={styles.statLabel}>Tổng sự kiện</Text>
             </Card.Content>
           </Card>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{scheduleStats.totalDays || 0}</Text>
               <Text style={styles.statLabel}>Ngày có lịch</Text>
             </Card.Content>
           </Card>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{scheduleStats.avgEventsPerDay || 0}</Text>
               <Text style={styles.statLabel}>TB sự kiện/ngày</Text>
@@ -315,23 +314,22 @@ const ReportsAnalytics = ({ onBack }) => {
           </Card.Content>
         </Card>
 
-        {/* User Statistics */}
-        <Text style={styles.sectionTitle}>Thống kê Người Dùng</Text>
+        <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Thống kê Người Dùng</Text>
         
-        <View style={styles.statsGrid}>
-          <Card style={styles.statCard}>
+        <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{userStats.totalUsers || 0}</Text>
               <Text style={styles.statLabel}>Tổng số</Text>
             </Card.Content>
           </Card>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{userStats.activeUsers || 0}</Text>
               <Text style={styles.statLabel}>Đang hoạt động</Text>
             </Card.Content>
           </Card>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{userStats.loginRate || 0}%</Text>
               <Text style={styles.statLabel}>Tỷ lệ truy cập</Text>
@@ -363,21 +361,20 @@ const ReportsAnalytics = ({ onBack }) => {
           </>
         )}
 
-        {/* Export buttons */}
-        <View style={styles.exportSection}>
-          <Text style={styles.sectionTitle}>Xuất báo cáo</Text>
-          <View style={styles.exportButtons}>
+        <View style={[styles.exportSection, isMobile && styles.exportSectionMobile]}>
+          <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Xuất báo cáo</Text>
+          <View style={[styles.exportButtons, isMobile && styles.exportButtonsMobile]}>
             <Button 
               mode="outlined" 
               onPress={() => alert('Tính năng xuất PDF đang phát triển')}
-              style={styles.exportButton}
+              style={[styles.exportButton, isMobile && styles.exportButtonMobile]}
             >
               Xuất PDF
             </Button>
             <Button 
               mode="outlined" 
               onPress={() => alert('Tính năng xuất Excel đang phát triển')}
-              style={styles.exportButton}
+              style={[styles.exportButton, isMobile && styles.exportButtonMobile]}
             >
               Xuất Excel
             </Button>
@@ -408,12 +405,18 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#1976d2',
   },
+  headerMobile: {
+    padding: 12,
+  },
   backButton: {
     padding: 8,
   },
   backButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  backButtonTextMobile: {
+    fontSize: 14,
   },
   title: {
     flex: 1,
@@ -422,14 +425,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  titleMobile: {
+    fontSize: 16,
+  },
   headerSpacer: {
     width: 40,
+  },
+  headerSpacerMobile: {
+    width: 32,
   },
   periodSelector: {
     flexDirection: 'row',
     justifyContent: 'center',
     paddingVertical: 16,
     backgroundColor: '#fff',
+  },
+  periodSelectorMobile: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   periodChip: {
     marginHorizontal: 4,
@@ -438,6 +454,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
+  contentMobile: {
+    paddingHorizontal: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -445,14 +464,27 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12,
   },
+  sectionTitleMobile: {
+    fontSize: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  statsGridMobile: {
+    marginBottom: 12,
+  },
   statCard: {
     width: '31%',
+    marginBottom: 8,
+  },
+  statCardMobile: {
+    width: '48%',
+    minWidth: '48%',
     marginBottom: 8,
   },
   statContent: {
@@ -565,12 +597,23 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 32,
   },
+  exportSectionMobile: {
+    marginTop: 12,
+    marginBottom: 24,
+  },
   exportButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
   },
+  exportButtonsMobile: {
+    flexDirection: 'column',
+    gap: 8,
+  },
   exportButton: {
     minWidth: 120,
+  },
+  exportButtonMobile: {
+    width: '100%',
   },
 });
 

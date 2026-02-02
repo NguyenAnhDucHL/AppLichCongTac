@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform, FlatList } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform, FlatList, useWindowDimensions } from 'react-native';
 import { Text, Card, Button, TextInput, ActivityIndicator, FAB, IconButton, Divider, Avatar, Tooltip } from 'react-native-paper';
 import { format, addDays, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -10,7 +10,11 @@ import TimePickerField from '../components/TimePickerField';
 import CommonModal from '../components/CommonModal';
 import { PlusIcon, EditIcon, DeleteIcon } from '../components/PlatformIcon';
 
+const BREAKPOINT_MOBILE = 768;
+
 const ScheduleManagement = ({ onBack }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < BREAKPOINT_MOBILE;
   const [schedules, setSchedules] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -307,7 +311,7 @@ const ScheduleManagement = ({ onBack }) => {
     );
   };
 
-  const EventModal = ({ visible, onDismiss, title, event, onSave, onEventChange, isLoading = false }) => {
+  const EventModal = ({ visible, onDismiss, title, event, onSave, onEventChange, isLoading = false, isMobileLayout = false }) => {
     // Local state để tránh re-render modal
     const [localEvent, setLocalEvent] = useState(() => event || { time: '', content: '' });
     const [errors, setErrors] = useState({});
@@ -434,7 +438,7 @@ const ScheduleManagement = ({ onBack }) => {
       <>
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, isMobileLayout && styles.modalContentMobile]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{title}</Text>
                 
@@ -522,17 +526,15 @@ const ScheduleManagement = ({ onBack }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isMobile && styles.headerMobile]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Quay lại</Text>
+          <Text style={[styles.backButtonText, isMobile && styles.backButtonTextMobile]}>← Quay lại</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Quản lý Lịch Công Tác</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={[styles.title, isMobile && styles.titleMobile]}>Quản lý Lịch Công Tác</Text>
+        <View style={[styles.headerSpacer, isMobile && styles.headerSpacerMobile]} />
       </View>
 
-      {/* Date selector */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateSelector}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.dateSelector, isMobile && styles.dateSelectorMobile]}>
         {Object.keys(schedules).map((dateKey) => (
           <TouchableOpacity
             key={dateKey}
@@ -558,11 +560,9 @@ const ScheduleManagement = ({ onBack }) => {
         ))}
       </ScrollView>
 
-      {/* Selected date display */}
-      <Text style={styles.selectedDateTitle}>{formatDisplayDate(selectedDate)}</Text>
+      <Text style={[styles.selectedDateTitle, isMobile && styles.selectedDateTitleMobile]}>{formatDisplayDate(selectedDate)}</Text>
 
-      {/* Events list */}
-      <View style={styles.eventsList}>
+      <View style={[styles.eventsList, isMobile && styles.eventsListMobile]}>
         {(schedules[selectedDate] || []).length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content>
@@ -650,9 +650,8 @@ const ScheduleManagement = ({ onBack }) => {
         onEventChange={setNewEvent}
         onSave={handleAddEvent}
         isLoading={isSaving}
+        isMobileLayout={isMobile}
       />
-
-      {/* Edit Event Modal */}
       <EventModal
         visible={showEditModal}
         onDismiss={() => !isSaving && setShowEditModal(false)}
@@ -661,6 +660,7 @@ const ScheduleManagement = ({ onBack }) => {
         onEventChange={setEditingEvent}
         onSave={handleEditEvent}
         isLoading={isSaving}
+        isMobileLayout={isMobile}
       />
 
       {/* CommonModal for all alerts */}
@@ -699,12 +699,18 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#1976d2',
   },
+  headerMobile: {
+    padding: 12,
+  },
   backButton: {
     padding: 8,
   },
   backButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  backButtonTextMobile: {
+    fontSize: 14,
   },
   title: {
     flex: 1,
@@ -713,12 +719,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  titleMobile: {
+    fontSize: 16,
+  },
   headerSpacer: {
     width: 40,
+  },
+  headerSpacerMobile: {
+    width: 32,
   },
   dateSelector: {
     backgroundColor: '#fff',
     paddingVertical: 12,
+  },
+  dateSelectorMobile: {
+    paddingVertical: 8,
   },
   dateButton: {
     paddingHorizontal: 16,
@@ -749,8 +764,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     textAlign: 'center',
   },
+  selectedDateTitleMobile: {
+    fontSize: 16,
+    padding: 12,
+  },
   eventsList: {
     flex: 1,
+  },
+  eventsListMobile: {
+    paddingHorizontal: 4,
   },
   flatListContent: {
     padding: 16,
@@ -816,6 +838,12 @@ const styles = StyleSheet.create({
     minWidth: 300,
     maxHeight: '80%',
     position: 'relative',
+  },
+  modalContentMobile: {
+    margin: 12,
+    padding: 16,
+    minWidth: 280,
+    maxWidth: '95%',
   },
   modalHeader: {
     width: '100%',

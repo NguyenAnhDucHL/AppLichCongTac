@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, useWindowDimensions } from 'react-native';
 import { Text, Card, Switch, TextInput, Button, ActivityIndicator, Divider } from 'react-native-paper';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { hasPermission, getCurrentUser } from '../services/AuthService';
 import CommonModal from '../components/CommonModal';
 
+const BREAKPOINT_MOBILE = 768;
+
 const SystemSettings = ({ onBack }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < BREAKPOINT_MOBILE;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -134,7 +138,7 @@ const SystemSettings = ({ onBack }) => {
   };
 
   const SettingCard = ({ title, children }) => (
-    <Card style={styles.settingCard}>
+    <Card style={[styles.settingCard, isMobile && styles.settingCardMobile]}>
       <Card.Content>
         <Text style={styles.settingTitle}>{title}</Text>
         {children}
@@ -143,7 +147,7 @@ const SystemSettings = ({ onBack }) => {
   );
 
   const SettingRow = ({ label, value, onValueChange, type = 'switch', disabled = false, ...props }) => (
-    <View style={styles.settingRow}>
+    <View style={[styles.settingRow, isMobile && styles.settingRowMobile]}>
       <Text style={[styles.settingLabel, disabled && styles.disabledLabel]}>{label}</Text>
       {type === 'switch' && (
         <Switch
@@ -189,18 +193,16 @@ const SystemSettings = ({ onBack }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isMobile && styles.headerMobile]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Quay lại</Text>
+          <Text style={[styles.backButtonText, isMobile && styles.backButtonTextMobile]}>← Quay lại</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Cài đặt Hệ thống</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={[styles.title, isMobile && styles.titleMobile]}>Cài đặt Hệ thống</Text>
+        <View style={[styles.headerSpacer, isMobile && styles.headerSpacerMobile]} />
       </View>
 
-      {/* Permission warning */}
       {!canManage && (
-        <Card style={[styles.warningCard, { backgroundColor: '#fff3cd' }]}>
+        <Card style={[styles.warningCard, isMobile && styles.warningCardMobile, { backgroundColor: '#fff3cd' }]}>
           <Card.Content>
             <Text style={styles.warningText}>
               ⚠️ Bạn chỉ có quyền xem cài đặt. Không thể thay đổi.
@@ -209,7 +211,7 @@ const SystemSettings = ({ onBack }) => {
         </Card>
       )}
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={[styles.content, isMobile && styles.contentMobile]}>
         {/* General Settings */}
         <SettingCard title="Cài đặt chung">
           <SettingRow
@@ -286,7 +288,7 @@ const SystemSettings = ({ onBack }) => {
           />
           <Divider style={styles.divider} />
           <Text style={styles.settingLabel}>Tần suất sao lưu</Text>
-          <View style={styles.frequencyContainer}>
+          <View style={[styles.frequencyContainer, isMobile && styles.frequencyContainerMobile]}>
             {['daily', 'weekly', 'monthly'].map(freq => (
               <TouchableOpacity
                 key={freq}
@@ -354,11 +356,11 @@ const SystemSettings = ({ onBack }) => {
 
         {/* Action Buttons */}
         {canManage && (
-          <View style={styles.actionButtons}>
+          <View style={[styles.actionButtons, isMobile && styles.actionButtonsMobile]}>
             <Button
               mode="outlined"
               onPress={resetToDefaults}
-              style={styles.actionButton}
+              style={[styles.actionButton, isMobile && styles.actionButtonMobile]}
             >
               Khôi phục mặc định
             </Button>
@@ -436,12 +438,18 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#1976d2',
   },
+  headerMobile: {
+    padding: 12,
+  },
   backButton: {
     padding: 8,
   },
   backButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  backButtonTextMobile: {
+    fontSize: 14,
   },
   title: {
     flex: 1,
@@ -450,12 +458,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  titleMobile: {
+    fontSize: 16,
+  },
   headerSpacer: {
     width: 40,
+  },
+  headerSpacerMobile: {
+    width: 32,
   },
   warningCard: {
     margin: 16,
     marginBottom: 8,
+  },
+  warningCardMobile: {
+    margin: 12,
+    marginBottom: 6,
   },
   warningText: {
     color: '#856404',
@@ -465,8 +483,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
+  contentMobile: {
+    paddingHorizontal: 12,
+  },
   settingCard: {
     marginVertical: 8,
+  },
+  settingCardMobile: {
+    marginVertical: 6,
   },
   settingTitle: {
     fontSize: 16,
@@ -479,6 +503,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
+  },
+  settingRowMobile: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 4,
   },
   settingLabel: {
     flex: 1,
@@ -505,6 +534,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 8,
+  },
+  frequencyContainerMobile: {
+    flexDirection: 'column',
+    gap: 8,
   },
   frequencyButton: {
     paddingHorizontal: 16,
@@ -546,8 +579,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: 24,
   },
+  actionButtonsMobile: {
+    flexDirection: 'column',
+    paddingVertical: 16,
+    gap: 8,
+  },
   actionButton: {
     minWidth: 140,
+  },
+  actionButtonMobile: {
+    width: '100%',
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, useWindowDimensions } from 'react-native';
 import { Text, ActivityIndicator, TextInput } from 'react-native-paper';
 import { Svg, Path } from 'react-native-svg';
 import { login } from '../services/AuthService';
@@ -24,7 +24,11 @@ const EyeOffIcon = ({ size = 24, color = '#666' }) => (
   </Svg>
 );
 
+const BREAKPOINT_MOBILE = 768;
+
 const LoginScreen = ({ onLogin, onBack }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < BREAKPOINT_MOBILE;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,9 +73,8 @@ const LoginScreen = ({ onLogin, onBack }) => {
         <View style={styles.backgroundShape3} />
       </View>
 
-      {/* Login Form */}
-      <View style={styles.loginContainer}>
-        <Text style={styles.title}>Quản trị</Text>
+      <View style={[styles.loginContainer, isMobile && styles.loginContainerMobile]}>
+        <Text style={[styles.title, isMobile && styles.titleMobile]}>Quản trị</Text>
         
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Tên đăng nhập</Text>
@@ -139,10 +142,10 @@ const LoginScreen = ({ onLogin, onBack }) => {
           )}
         </TouchableOpacity>
 
-        <View style={styles.helpContainer}>
-          <Text style={styles.helpText}>Thông tin đăng nhập mặc định:</Text>
-          <Text style={styles.helpText}>Admin: admin / CamPha@2026</Text>
-          <Text style={styles.helpText}>Editor: editor / Editor@2026</Text>
+        <View style={[styles.helpContainer, isMobile && styles.helpContainerMobile]}>
+          <Text style={[styles.helpText, isMobile && styles.helpTextMobile]}>Thông tin đăng nhập mặc định:</Text>
+          <Text style={[styles.helpText, isMobile && styles.helpTextMobile]}>Admin: admin / CamPha@2026</Text>
+          <Text style={[styles.helpText, isMobile && styles.helpTextMobile]}>Editor: editor / Editor@2026</Text>
         </View>
 
         {onBack && (
@@ -207,18 +210,19 @@ const styles = StyleSheet.create({
   loginContainer: {
     width: '90%',
     maxWidth: 400,
-    backgroundColor: '#e3f2fd', // Light blue background
+    backgroundColor: '#e3f2fd',
     borderRadius: 12,
     padding: 32,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
     zIndex: 1,
+  },
+  loginContainerMobile: {
+    width: '95%',
+    padding: 20,
   },
   title: {
     fontSize: 28,
@@ -226,6 +230,10 @@ const styles = StyleSheet.create({
     color: '#d32f2f', // Red color
     textAlign: 'center',
     marginBottom: 32,
+  },
+  titleMobile: {
+    fontSize: 22,
+    marginBottom: 20,
   },
   inputContainer: {
     marginBottom: 24,
@@ -302,10 +310,17 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#2196f3',
   },
+  helpContainerMobile: {
+    padding: 8,
+    marginTop: 12,
+  },
   helpText: {
     fontSize: 12,
     color: '#666',
     marginBottom: 2,
+  },
+  helpTextMobile: {
+    fontSize: 11,
   },
 });
 

@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, TouchableOpacity, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, TouchableOpacity, Linking, useWindowDimensions } from 'react-native';
 import { Text, Card, ActivityIndicator, Title, Paragraph } from 'react-native-paper';
 import { format, isToday, parseISO, addDays as addDaysFns } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../services/AuthService';
 
+const BREAKPOINT_MOBILE = 768;
+
 const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDaysData = {}, onQuanTriClick, onLogout }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < BREAKPOINT_MOBILE;
   const today = format(new Date(), "EEEE, 'ngày' dd/MM/yyyy", { locale: vi });
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const scrollViewRef = useRef(null);
@@ -89,60 +93,59 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
         <View style={styles.largeBannerContainer}>
           <Image 
             source={require('../../assets/images/noimage4.jpg')} 
-            style={styles.largeBanner}
-        resizeMode="cover"
+            style={[styles.largeBanner, isMobile && styles.largeBannerMobile]}
+            resizeMode="cover"
           />
-          {/* Overlay: Banner nhỏ bên trái + Text bên phải */}
           <View style={styles.bannerOverlay}>
-            <View style={styles.bannerOverlayContent}>
-              {/* Banner nhỏ bên trái (Emblem) - từ HOME đến QUẢN LÝ VĂN BẢN ĐIỀU HÀNH */}
-              <View style={styles.smallBannerWrapper}>
+            <View style={[styles.bannerOverlayContent, isMobile && styles.bannerOverlayContentMobile]}>
+              <View style={[styles.smallBannerWrapper, isMobile && styles.smallBannerWrapperMobile]}>
                 <Image 
                   source={require('../../assets/images/banner-n1-cdn.png')} 
-                  style={styles.smallBanner}
+                  style={[styles.smallBanner, isMobile && styles.smallBannerMobile]}
                   resizeMode="contain"
                 />
               </View>
-              {/* Text ở giữa/bên phải - từ CỔNG THÔNG TIN đến QUẢN TRỊ */}
-              <View style={styles.headerTextWrapper}>
-                <View style={styles.headerTextContainer}>
-            <Text style={styles.mainTitle}>LỊCH CÔNG TÁC</Text>
-            <Text style={styles.subTitle}>UBND PHƯỜNG CẨM PHẢ</Text>
-          </View>
+              <View style={[styles.headerTextWrapper, isMobile && styles.headerTextWrapperMobile]}>
+                <View style={[styles.headerTextContainer, isMobile && styles.headerTextContainerMobile]}>
+                  <Text style={[styles.mainTitle, isMobile && styles.mainTitleMobile]}>LỊCH CÔNG TÁC</Text>
+                  <Text style={[styles.subTitle, isMobile && styles.subTitleMobile]}>UBND PHƯỜNG CẨM PHẢ</Text>
+                </View>
               </View>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Navigation Bar */}
-      <View style={styles.navBar}>
+      {/* Navigation Bar - cuộn ngang trên mobile */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={isMobile ? styles.navBarScroll : undefined} contentContainerStyle={isMobile ? styles.navBarScrollContent : undefined}>
+      <View style={[styles.navBar, isMobile && styles.navBarMobile]}>
         <TouchableOpacity onPress={handleHomeClick}>
-          <Text style={styles.navItem}>HOME</Text>
+          <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>HOME</Text>
         </TouchableOpacity>
         <View style={styles.navSeparator} />
         <TouchableOpacity onPress={() => handleNavClick('https://congchuc.quangninh.gov.vn/')}>
-          <Text style={styles.navItem}>QUẢN LÝ VĂN BẢN ĐIỀU HÀNH</Text>
+          <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>QUẢN LÝ VĂN BẢN ĐIỀU HÀNH</Text>
         </TouchableOpacity>
         <View style={styles.navSeparator} />
         <TouchableOpacity onPress={() => handleNavClick('https://quangninh.gov.vn/Trang/Default.aspx')}>
-          <Text style={styles.navItem}>CỔNG THÔNG TIN</Text>
+          <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>CỔNG THÔNG TIN</Text>
         </TouchableOpacity>
         <View style={styles.navSeparator} />
         <TouchableOpacity onPress={() => handleNavClick('https://mail.quangninh.gov.vn/owa/#path=/mail')}>
-          <Text style={styles.navItem}>THƯ ĐIỆN TỬ</Text>
+          <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>THƯ ĐIỆN TỬ</Text>
         </TouchableOpacity>
         <View style={styles.navSeparator} />
-        <Text style={styles.navItem}>TÌM KIẾM</Text>
+        <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>TÌM KIẾM</Text>
         <View style={styles.navSeparator} />
         <TouchableOpacity onPress={handleQuanTriClick}>
-          <Text style={[styles.navItem, currentUser && styles.navItemAuthenticated]}>
+          <Text style={[styles.navItem, isMobile && styles.navItemMobile, currentUser && styles.navItemAuthenticated]}>
             {currentUser ? `QUẢN TRỊ (${currentUser.fullName})` : 'QUẢN TRỊ'}
           </Text>
         </TouchableOpacity>
       </View>
+      </ScrollView>
 
-      {/* Main Content - Layout 2 cột */}
+      {/* Main Content - Layout 2 cột (1 cột trên mobile) */}
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -150,10 +153,9 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.content}>
-          <View style={styles.twoColumnLayout}>
-            {/* Cột trái: Hôm nay - Tất cả events */}
-            <View style={styles.leftColumn}>
+        <View style={[styles.content, isMobile && styles.contentMobile]}>
+          <View style={[styles.twoColumnLayout, isMobile && styles.twoColumnLayoutMobile]}>
+            <View style={[styles.leftColumn, isMobile && styles.leftColumnMobile]}>
               {todayData && todayData.length > 0 ? (
                 <View style={[styles.daySection, styles.todaySection]}>
                   <Text style={styles.dayTitle}>
@@ -173,8 +175,7 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
               )}
             </View>
 
-            {/* Cột phải: 2 ngày tiếp theo - Mỗi ngày chỉ 2 events đầu tiên */}
-            <View style={styles.rightColumn}>
+            <View style={[styles.rightColumn, isMobile && styles.rightColumnMobile]}>
               {nextDays.map((dayKey) => {
                 const dayData = allDaysData[dayKey] || [];
                 const dayDate = parseISO(dayKey);
@@ -241,7 +242,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     backgroundColor: '#f5f5f5',
-    resizeMode: 'cover', // Cover để ảnh phủ đầy như design
+    resizeMode: 'cover',
+  },
+  largeBannerMobile: {
+    height: 100,
   },
   bannerOverlay: {
     position: 'absolute',
@@ -261,20 +265,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40, // Cùng padding với navBar
     marginLeft: 'auto',
     marginRight: 'auto',
-    overflow: 'hidden', // Ngăn text tràn ra ngoài
-    flex: 1, // Chiếm toàn bộ không gian
+    overflow: 'hidden',
+    flex: 1,
+  },
+  bannerOverlayContentMobile: {
+    paddingHorizontal: 12,
   },
   smallBannerWrapper: {
     width: '35%', // Chiều rộng từ HOME đến QUẢN LÝ VĂN BẢN ĐIỀU HÀNH (khoảng 35% của navBar)
     flexShrink: 0,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    overflow: 'hidden', // Ẩn phần banner tràn ra ngoài wrapper
+    overflow: 'hidden',
+  },
+  smallBannerWrapperMobile: {
+    width: '28%',
   },
   smallBanner: {
-    width: 1260, // 1050 * 1.2 = 1260 (tăng 20%)
-    height: 540, // 450 * 1.2 = 540 (tăng 20%)
+    width: 1260,
+    height: 540,
     flexShrink: 0,
+  },
+  smallBannerMobile: {
+    width: 180,
+    height: 77,
   },
   headerTextWrapper: {
     width: '65%', // Chiều rộng từ CỔNG THÔNG TIN đến QUẢN TRỊ (khoảng 65% của navBar)
@@ -282,14 +296,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
+  headerTextWrapperMobile: {
+    width: '72%',
+  },
   headerTextContainer: {
     flex: 1,
     alignItems: 'flex-start',
     justifyContent: 'center',
-    minWidth: 0, // Đảm bảo flex hoạt động đúng
-    marginLeft: 100, // Lùi sang bên trái 100px từ smallBanner
-    flexShrink: 1, // Cho phép shrink nếu cần
-    overflow: 'hidden', // Ngăn text tràn ra ngoài
+    minWidth: 0,
+    marginLeft: 100,
+    flexShrink: 1,
+    overflow: 'hidden',
+  },
+  headerTextContainerMobile: {
+    marginLeft: 12,
   },
   header: {
     backgroundColor: '#fff', // Nền trắng (fallback)
@@ -321,10 +341,16 @@ const styles = StyleSheet.create({
     color: '#1976d2',
     marginBottom: 4,
   },
+  mainTitleMobile: {
+    fontSize: 18,
+  },
   subTitle: {
     fontSize: 18,
     color: '#d32f2f',
     fontWeight: 'bold',
+  },
+  subTitleMobile: {
+    fontSize: 14,
   },
   logoContainer: {
     width: 100,
@@ -337,6 +363,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  navBarScroll: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+  },
+  navBarScrollContent: {
+    flexGrow: 1,
+    minWidth: '100%',
+  },
   navBar: {
     backgroundColor: '#1565c0',
     flexDirection: 'row',
@@ -348,12 +383,22 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  navBarMobile: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+    flexShrink: 0,
+  },
   navItem: {
     color: '#fff',
     fontSize: 14,
     fontWeight: 'normal',
     paddingVertical: 4,
     paddingHorizontal: 4,
+  },
+  navItemMobile: {
+    fontSize: 12,
+    paddingHorizontal: 2,
   },
   navSeparator: {
     width: 1,
@@ -370,21 +415,37 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  contentMobile: {
+    padding: 12,
+  },
   twoColumnLayout: {
-    flexDirection: 'row', // 'row' để hiển thị 2 cột cạnh nhau
+    flexDirection: 'row',
     alignItems: 'flex-start',
     width: '100%',
-    flexWrap: 'nowrap', // Không cho phép wrap xuống dòng
+    flexWrap: 'nowrap',
+  },
+  twoColumnLayoutMobile: {
+    flexDirection: 'column',
+    flexWrap: 'wrap',
   },
   leftColumn: {
-    width: '66.67%', // Chiếm 8 phần (8/12 = 66.67%)
+    width: '66.67%',
     paddingRight: 10,
-    flexShrink: 0, // Không cho phép shrink
+    flexShrink: 0,
+  },
+  leftColumnMobile: {
+    width: '100%',
+    paddingRight: 0,
+    marginBottom: 16,
   },
   rightColumn: {
-    width: '33.33%', // Chiếm 4 phần (4/12 = 33.33%)
+    width: '33.33%',
     paddingLeft: 10,
-    flexShrink: 0, // Không cho phép shrink
+    flexShrink: 0,
+  },
+  rightColumnMobile: {
+    width: '100%',
+    paddingLeft: 0,
   },
   daySection: {
     marginBottom: 24,

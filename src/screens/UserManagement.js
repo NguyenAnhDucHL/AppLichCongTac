@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, useWindowDimensions } from 'react-native';
 import { Text, Card, Button, TextInput, ActivityIndicator, Switch, Chip } from 'react-native-paper';
 import { Svg, Path } from 'react-native-svg';
 import { collection, doc, getDoc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
@@ -28,7 +28,11 @@ const EyeOffIcon = ({ size = 24, color = '#666' }) => (
   </Svg>
 );
 
+const BREAKPOINT_MOBILE = 768;
+
 const UserManagement = ({ onBack }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < BREAKPOINT_MOBILE;
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -273,7 +277,7 @@ const UserManagement = ({ onBack }) => {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const UserModal = ({ visible, onDismiss, title, user, onSave, onUserChange, isEditing = false }) => {
+  const UserModal = ({ visible, onDismiss, title, user, onSave, onUserChange, isEditing = false, isMobileLayout = false }) => {
     // Local state để tránh re-render modal
     const [localUser, setLocalUser] = useState(() => user || {});
     const [showPassword, setShowPassword] = useState(false);
@@ -331,7 +335,7 @@ const UserManagement = ({ onBack }) => {
       >
         <View style={styles.modalOverlay}>
           <ScrollView contentContainerStyle={styles.modalScrollContent}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, isMobileLayout && styles.modalContentMobile]}>
               <Text style={styles.modalTitle}>{title}</Text>
               
               <TextInput
@@ -437,19 +441,17 @@ const UserManagement = ({ onBack }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isMobile && styles.headerMobile]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Quay lại</Text>
+          <Text style={[styles.backButtonText, isMobile && styles.backButtonTextMobile]}>← Quay lại</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Quản lý Người Dùng</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={[styles.title, isMobile && styles.titleMobile]}>Quản lý Người Dùng</Text>
+        <View style={[styles.headerSpacer, isMobile && styles.headerSpacerMobile]} />
       </View>
 
-      {/* Stats */}
-      <Card style={styles.statsCard}>
+      <Card style={[styles.statsCard, isMobile && styles.statsCardMobile]}>
         <Card.Content>
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile]}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{users.length}</Text>
               <Text style={styles.statLabel}>Tổng số</Text>
@@ -467,9 +469,9 @@ const UserManagement = ({ onBack }) => {
       </Card>
 
       {/* Search and Filter Bar */}
-      <Card style={styles.filterCard}>
+      <Card style={[styles.filterCard, isMobile && styles.filterCardMobile]}>
         <Card.Content>
-          <View style={styles.filterContainer}>
+          <View style={[styles.filterContainer, isMobile && styles.filterContainerMobile]}>
             <TextInput
               mode="outlined"
               placeholder="Tìm kiếm theo tên, username, email..."
@@ -478,7 +480,7 @@ const UserManagement = ({ onBack }) => {
               style={styles.searchInput}
               left={<SearchIcon size={24} color="#666" />}
             />
-            <View style={styles.filterRow}>
+            <View style={[styles.filterRow, isMobile && styles.filterRowMobile]}>
               <TextInput
                 mode="outlined"
                 label="Lọc theo vai trò"
@@ -515,7 +517,7 @@ const UserManagement = ({ onBack }) => {
                 </Chip>
               ))}
             </View>
-            <View style={styles.filterRow}>
+            <View style={[styles.filterRow, isMobile && styles.filterRowMobile]}>
               <Chip
                 selected={filterStatus === 'all'}
                 onPress={() => setFilterStatus('all')}
@@ -554,7 +556,7 @@ const UserManagement = ({ onBack }) => {
       </Card>
 
       {/* Users list */}
-      <ScrollView style={styles.usersList}>
+      <ScrollView style={[styles.usersList, isMobile && styles.usersListMobile]}>
         {filteredUsers.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content>
@@ -567,9 +569,9 @@ const UserManagement = ({ onBack }) => {
           </Card>
         ) : (
           filteredUsers.map((user) => (
-          <Card key={user.id} style={styles.userCard}>
+          <Card key={user.id} style={[styles.userCard, isMobile && styles.userCardMobile]}>
             <Card.Content>
-              <View style={styles.userHeader}>
+              <View style={[styles.userHeader, isMobile && styles.userHeaderMobile]}>
                 <View style={styles.userInfo}>
                   <Text style={styles.userFullName}>{user.fullName}</Text>
                   <Text style={styles.userDetail}>@{user.username} • {user.email}</Text>
@@ -664,21 +666,19 @@ const UserManagement = ({ onBack }) => {
           handleAddUserWithData(userData);
         }}
         isEditing={false}
+        isMobileLayout={isMobile}
       />
-
-      {/* Edit User Modal */}
       <UserModal
         visible={showEditModal}
         onDismiss={() => setShowEditModal(false)}
         title="Sửa thông tin người dùng"
         user={editingUser || {}}
         onSave={(userData) => {
-          // Update editingUser với data từ modal
           setEditingUser(userData);
-          // Gọi handleEditUser với userData mới
           handleEditUserWithData(userData);
         }}
         isEditing={true}
+        isMobileLayout={isMobile}
       />
 
       {/* Success Modal */}
@@ -716,12 +716,18 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#1976d2',
   },
+  headerMobile: {
+    padding: 12,
+  },
   backButton: {
     padding: 8,
   },
   backButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  backButtonTextMobile: {
+    fontSize: 14,
   },
   title: {
     flex: 1,
@@ -730,16 +736,30 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  titleMobile: {
+    fontSize: 16,
+  },
   headerSpacer: {
     width: 40,
+  },
+  headerSpacerMobile: {
+    width: 32,
   },
   statsCard: {
     margin: 16,
     marginBottom: 8,
   },
+  statsCardMobile: {
+    margin: 12,
+    marginBottom: 6,
+  },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+  },
+  statsContainerMobile: {
+    flexWrap: 'wrap',
+    gap: 4,
   },
   statItem: {
     alignItems: 'center',
@@ -757,8 +777,15 @@ const styles = StyleSheet.create({
     margin: 16,
     marginBottom: 8,
   },
+  filterCardMobile: {
+    margin: 12,
+    marginBottom: 6,
+  },
   filterContainer: {
     gap: 12,
+  },
+  filterContainerMobile: {
+    gap: 8,
   },
   searchInput: {
     marginBottom: 8,
@@ -768,6 +795,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     alignItems: 'center',
+  },
+  filterRowMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
   },
   filterInput: {
     flex: 1,
@@ -793,14 +824,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
+  usersListMobile: {
+    paddingHorizontal: 12,
+  },
   userCard: {
     marginBottom: 12,
+  },
+  userCardMobile: {
+    marginBottom: 8,
   },
   userHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 8,
+  },
+  userHeaderMobile: {
+    flexDirection: 'column',
+    gap: 6,
   },
   userInfo: {
     flex: 1,
@@ -868,6 +909,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minWidth: 320,
     maxWidth: 400,
+  },
+  modalContentMobile: {
+    margin: 12,
+    padding: 16,
+    minWidth: 280,
+    maxWidth: '95%',
   },
   modalTitle: {
     fontSize: 18,

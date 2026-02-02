@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Image, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Image, Modal, useWindowDimensions } from 'react-native';
 import { Text, Card, TextInput, Button, ActivityIndicator, Avatar, Switch, Divider, Portal } from 'react-native-paper';
 import { Svg, Path } from 'react-native-svg';
 import { CameraIcon } from '../components/PlatformIcon';
@@ -30,7 +30,11 @@ const EyeOffIcon = ({ size = 24, color = '#666' }) => (
 );
 
 
+const BREAKPOINT_MOBILE = 768;
+
 const ProfileSettings = ({ onBack }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < BREAKPOINT_MOBILE;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -448,18 +452,16 @@ const ProfileSettings = ({ onBack }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isMobile && styles.headerMobile]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Quay lại</Text>
+          <Text style={[styles.backButtonText, isMobile && styles.backButtonTextMobile]}>← Quay lại</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Thông tin cá nhân</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={[styles.title, isMobile && styles.titleMobile]}>Thông tin cá nhân</Text>
+        <View style={[styles.headerSpacer, isMobile && styles.headerSpacerMobile]} />
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Avatar Section */}
-        <Card style={styles.avatarCard}>
+      <ScrollView style={[styles.content, isMobile && styles.contentMobile]}>
+        <Card style={[styles.avatarCard, isMobile && styles.avatarCardMobile]}>
           <Card.Content style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
               <TouchableOpacity
@@ -585,8 +587,7 @@ const ProfileSettings = ({ onBack }) => {
           </TouchableOpacity>
         </Modal>
 
-        {/* Avatar Customization */}
-        <Card style={styles.settingCard}>
+        <Card style={[styles.settingCard, isMobile && styles.settingCardMobile]}>
           <Card.Content>
             <Text style={styles.settingTitle}>Tùy chỉnh Avatar</Text>
             
@@ -846,12 +847,18 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#1976d2',
   },
+  headerMobile: {
+    padding: 12,
+  },
   backButton: {
     padding: 8,
   },
   backButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  backButtonTextMobile: {
+    fontSize: 14,
   },
   title: {
     flex: 1,
@@ -860,15 +867,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  titleMobile: {
+    fontSize: 16,
+  },
   headerSpacer: {
     width: 40,
+  },
+  headerSpacerMobile: {
+    width: 32,
   },
   content: {
     flex: 1,
     paddingHorizontal: 16,
   },
+  contentMobile: {
+    paddingHorizontal: 12,
+  },
   avatarCard: {
     marginVertical: 16,
+  },
+  avatarCardMobile: {
+    marginVertical: 12,
   },
   avatarSection: {
     flexDirection: 'row',
@@ -1043,6 +1062,9 @@ const styles = StyleSheet.create({
   },
   settingCard: {
     marginBottom: 16,
+  },
+  settingCardMobile: {
+    marginBottom: 12,
   },
   settingTitle: {
     fontSize: 16,

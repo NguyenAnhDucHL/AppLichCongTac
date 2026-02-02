@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Image, useWindowDimensions } from 'react-native';
 import { Text, Card, Avatar, Divider, Button, ActivityIndicator, Menu } from 'react-native-paper';
 import { useLocation } from 'react-router-dom';
 import { logout, getCurrentUser, hasPermission } from '../services/AuthService';
@@ -20,7 +20,11 @@ import {
   AccountIcon
 } from '../components/PlatformIcon';
 
+const BREAKPOINT_MOBILE = 768;
+
 const AdminDashboard = ({ onLogout, onBack, navigate }) => {
+  const { width } = useWindowDimensions();
+  const isMobile = width < BREAKPOINT_MOBILE;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentScreen, setCurrentScreen] = useState('dashboard');
@@ -142,12 +146,12 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
     const IconComponent = iconMap[icon] || CalendarEditIcon;
 
     return (
-      <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+      <TouchableOpacity style={[styles.menuItem, isMobile && styles.menuItemMobile]} onPress={onPress}>
         <View style={styles.menuContent}>
-          <IconComponent size={40} color="#1976d2" style={styles.menuIcon} />
+          <IconComponent size={isMobile ? 32 : 40} color="#1976d2" style={styles.menuIcon} />
           <View style={styles.menuText}>
-            <Text style={styles.menuTitle}>{title}</Text>
-            <Text style={styles.menuDescription}>{description}</Text>
+            <Text style={[styles.menuTitle, isMobile && styles.menuTitleMobile]}>{title}</Text>
+            <Text style={[styles.menuDescription, isMobile && styles.menuDescriptionMobile]}>{description}</Text>
           </View>
           <ChevronRightIcon size={24} color="#666" style={styles.chevron} />
         </View>
@@ -201,11 +205,10 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header với dropdown menu hiện đại */}
-      <View style={styles.header}>
+      <View style={[styles.header, isMobile && styles.headerMobile]}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Admin Dashboard</Text>
-          <Text style={styles.headerSubtitle}>UBND Phường Cẩm Phả</Text>
+          <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Admin Dashboard</Text>
+          <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>UBND Phường Cẩm Phả</Text>
         </View>
         
         <View style={styles.userMenuContainer}>
@@ -299,29 +302,28 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
         </View>
       </View>
 
-      {/* Thống kê */}
-      <Text style={styles.sectionTitle}>Tổng quan</Text>
-      <View style={styles.statsContainer}>
-        <View style={styles.statsGrid}>
-          <Card style={styles.statCard}>
+      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Tổng quan</Text>
+      <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile]}>
+        <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{stats.todayEvents}</Text>
               <Text style={styles.statLabel}>Sự kiện hôm nay</Text>
             </Card.Content>
           </Card>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{stats.weekEvents}</Text>
               <Text style={styles.statLabel}>Sự kiện tuần này</Text>
             </Card.Content>
           </Card>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{stats.monthEvents}</Text>
               <Text style={styles.statLabel}>Sự kiện tháng này</Text>
             </Card.Content>
           </Card>
-          <Card style={styles.statCard}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
               <Text style={styles.statNumber}>{stats.totalUsers}</Text>
               <Text style={styles.statLabel}>Người dùng</Text>
@@ -330,9 +332,8 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
         </View>
       </View>
 
-      {/* Menu chức năng */}
-      <Text style={styles.sectionTitle}>Chức năng</Text>
-      <Card style={styles.menuCard}>
+      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Chức năng</Text>
+      <Card style={[styles.menuCard, isMobile && styles.menuCardMobile]}>
         <Card.Content style={styles.menuCardContent}>
           <MenuItem
             icon="calendar-edit"
@@ -380,9 +381,8 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
         </Card.Content>
       </Card>
 
-      {/* Quay lại */}
-      <View style={styles.backContainer}>
-        <Button mode="outlined" onPress={onBack} style={styles.backButton}>
+      <View style={[styles.backContainer, isMobile && styles.backContainerMobile]}>
+        <Button mode="outlined" onPress={onBack} style={[styles.backButton, isMobile && styles.backButtonMobile]}>
           Quay lại trang chủ
         </Button>
       </View>
@@ -430,6 +430,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
+  headerMobile: {
+    padding: 12,
+  },
   headerLeft: {
     flex: 1,
   },
@@ -438,10 +441,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
   },
+  headerTitleMobile: {
+    fontSize: 18,
+  },
   headerSubtitle: {
     fontSize: 14,
     color: '#e3f2fd',
     marginTop: 2,
+  },
+  headerSubtitleMobile: {
+    fontSize: 12,
   },
   userMenuContainer: {
     position: 'relative',
@@ -550,17 +559,34 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12,
   },
+  sectionTitleMobile: {
+    marginHorizontal: 12,
+    marginTop: 16,
+    marginBottom: 8,
+    fontSize: 16,
+  },
   statsContainer: {
     paddingHorizontal: 20,
+  },
+  statsContainerMobile: {
+    paddingHorizontal: 12,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
+  statsGridMobile: {
+    justifyContent: 'flex-start',
+  },
   statCard: {
     width: '48%',
     marginBottom: 12,
+  },
+  statCardMobile: {
+    width: '48%',
+    minWidth: '48%',
+    marginBottom: 8,
   },
   statContent: {
     alignItems: 'center',
@@ -581,11 +607,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
   },
+  menuCardMobile: {
+    marginHorizontal: 12,
+    marginBottom: 16,
+  },
   menuCardContent: {
     paddingVertical: 8,
   },
   menuItem: {
     paddingVertical: 16,
+  },
+  menuItemMobile: {
+    paddingVertical: 12,
   },
   menuContent: {
     flexDirection: 'row',
@@ -604,9 +637,15 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 4,
   },
+  menuTitleMobile: {
+    fontSize: 14,
+  },
   menuDescription: {
     fontSize: 12,
     color: '#666',
+  },
+  menuDescriptionMobile: {
+    fontSize: 11,
   },
   chevron: {
     backgroundColor: 'transparent',
@@ -616,10 +655,17 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     alignItems: 'center',
   },
+  backContainerMobile: {
+    padding: 12,
+    paddingBottom: 24,
+  },
   backButton: {
     borderColor: '#1976d2',
     alignSelf: 'center',
     minWidth: 140,
+  },
+  backButtonMobile: {
+    minWidth: 120,
   },
 });
 
