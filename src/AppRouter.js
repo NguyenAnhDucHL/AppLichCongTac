@@ -180,7 +180,7 @@ const AppRouter = () => {
   return (
     <BrowserRouter>
       <PaperProvider>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={Platform.OS === 'web' ? ['bottom'] : undefined}>
           <StatusBar style="auto" />
           <Routes>
             <Route path="/app/" element={<HomePage />} />

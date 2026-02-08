@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, TouchableOpacity, Linking, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, TouchableOpacity, Linking, useWindowDimensions, Modal, TextInput } from 'react-native';
 import { Text, Card, ActivityIndicator, Title, Paragraph } from 'react-native-paper';
 import { format, isToday, parseISO, addDays as addDaysFns } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -8,6 +8,15 @@ import { getCurrentUser } from '../services/AuthService';
 
 const BREAKPOINT_MOBILE = 768;
 
+// Icon hamburger (3 gạch ngang)
+const HamburgerIcon = ({ size = 24, color = '#fff', style }) => (
+  <View style={[{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }, style]}>
+    <View style={{ width: size * 0.7, height: 2, backgroundColor: color, marginVertical: 2 }} />
+    <View style={{ width: size * 0.7, height: 2, backgroundColor: color, marginVertical: 2 }} />
+    <View style={{ width: size * 0.7, height: 2, backgroundColor: color, marginVertical: 2 }} />
+  </View>
+);
+
 const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDaysData = {}, onQuanTriClick, onLogout }) => {
   const { width } = useWindowDimensions();
   const isMobile = width < BREAKPOINT_MOBILE;
@@ -15,6 +24,7 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const scrollViewRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showDrawer, setShowDrawer] = useState(false);
   const navigate = useNavigate();
 
   // Kiểm tra session khi component load
@@ -85,18 +95,19 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
     .filter(dayKey => dayKey !== todayKey)
     .slice(0, 2); // Chỉ lấy 2 ngày tiếp theo
 
+  const isWeb = Platform.OS === 'web';
+
   return (
-    <View style={styles.container}>
-      {/* Header với banner */}
+    <View style={[styles.container, isWeb && styles.containerWeb]}>
+      {/* Header với banner - banner-n1-cdn.png nằm trên cùng (zIndex) */}
       <View style={styles.headerContainer}>
-        {/* Banner lớn với overlay: noimage4.jpg */}
-        <View style={styles.largeBannerContainer}>
+        <View style={[styles.largeBannerContainer, isMobile && styles.largeBannerContainerMobile]}>
           <Image 
             source={require('../../assets/images/noimage4.jpg')} 
             style={[styles.largeBanner, isMobile && styles.largeBannerMobile]}
             resizeMode="cover"
           />
-          <View style={styles.bannerOverlay}>
+          <View style={styles.bannerOverlay} pointerEvents="box-none">
             <View style={[styles.bannerOverlayContent, isMobile && styles.bannerOverlayContentMobile]}>
               <View style={[styles.smallBannerWrapper, isMobile && styles.smallBannerWrapperMobile]}>
                 <Image 
@@ -116,11 +127,75 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
         </View>
       </View>
 
-      {/* Navigation Bar - cuộn ngang trên mobile */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={isMobile ? styles.navBarScroll : undefined} contentContainerStyle={isMobile ? styles.navBarScrollContent : undefined}>
-      <View style={[styles.navBar, isMobile && styles.navBarMobile]}>
+      {/* Mobile: Thanh trên với hamburger + tiêu đề */}
+      {isMobile && (
+        <View style={styles.mobileTopBar}>
+          <TouchableOpacity onPress={() => setShowDrawer(true)} style={styles.hamburgerButton} activeOpacity={0.7}>
+            <HamburgerIcon size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.mobileTopBarTitle} numberOfLines={1}>LỊCH CÔNG TÁC</Text>
+          <View style={styles.mobileTopBarSpacer} />
+        </View>
+      )}
+
+      {/* Drawer menu (mobile) - hiện khi bấm hamburger */}
+      <Modal visible={showDrawer} transparent animationType="slide">
+        <View style={styles.drawerBackdrop}>
+          <View style={styles.drawerPanel}>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerTitle}>Menu</Text>
+              <TouchableOpacity onPress={() => setShowDrawer(false)} style={styles.drawerCloseBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Text style={styles.drawerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.drawerSearchBox}>
+              <Text style={styles.drawerSearchPlaceholder}>🔍 Tìm kiếm</Text>
+            </View>
+            <TouchableOpacity style={styles.drawerMenuItem} onPress={() => { setShowDrawer(false); handleQuanTriClick(); }}>
+              <Text style={styles.drawerMenuIcon}>👤</Text>
+              <Text style={styles.drawerMenuText}>{currentUser ? `Quản trị (${currentUser.fullName})` : 'Đăng nhập / Quản trị'}</Text>
+              <Text style={styles.drawerMenuArrow}>›</Text>
+            </TouchableOpacity>
+            <View style={styles.drawerSectionLabel}>
+              <Text style={styles.drawerSectionLabelText}>Chuyên mục</Text>
+            </View>
+            <TouchableOpacity style={styles.drawerMenuItem} onPress={() => { setShowDrawer(false); handleHomeClick(); }}>
+              <Text style={styles.drawerMenuIcon}>🏠</Text>
+              <Text style={styles.drawerMenuText}>Trang chủ</Text>
+              <Text style={styles.drawerMenuArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.drawerMenuItem} onPress={() => { setShowDrawer(false); handleNavClick('https://congchuc.quangninh.gov.vn/'); }}>
+              <Text style={styles.drawerMenuIcon}>📄</Text>
+              <Text style={styles.drawerMenuText}>Quản lý văn bản điều hành</Text>
+              <Text style={styles.drawerMenuArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.drawerMenuItem} onPress={() => { setShowDrawer(false); handleNavClick('https://quangninh.gov.vn/Trang/Default.aspx'); }}>
+              <Text style={styles.drawerMenuIcon}>🌐</Text>
+              <Text style={styles.drawerMenuText}>Cổng thông tin</Text>
+              <Text style={styles.drawerMenuArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.drawerMenuItem} onPress={() => { setShowDrawer(false); handleNavClick('https://mail.quangninh.gov.vn/owa/#path=/mail'); }}>
+              <Text style={styles.drawerMenuIcon}>✉️</Text>
+              <Text style={styles.drawerMenuText}>Thư điện tử</Text>
+              <Text style={styles.drawerMenuArrow}>›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.drawerMenuItem} onPress={() => setShowDrawer(false)}>
+              <Text style={styles.drawerMenuIcon}>🔍</Text>
+              <Text style={styles.drawerMenuText}>Tìm kiếm</Text>
+              <Text style={styles.drawerMenuArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.drawerBackdropTouchable} onPress={() => setShowDrawer(false)} activeOpacity={1} />
+        </View>
+      </Modal>
+
+      {/* Navigation Bar - ẩn trên mobile (dùng drawer thay thế) */}
+      {!isMobile && (
+      <View style={styles.navBarOuter}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.navBarScroll} contentContainerStyle={styles.navBarScrollContent}>
+      <View style={styles.navBar}>
         <TouchableOpacity onPress={handleHomeClick}>
-          <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>HOME</Text>
+          <Text style={styles.navItem}>HOME</Text>
         </TouchableOpacity>
         <View style={styles.navSeparator} />
         <TouchableOpacity onPress={() => handleNavClick('https://congchuc.quangninh.gov.vn/')}>
@@ -138,17 +213,20 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
         <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>TÌM KIẾM</Text>
         <View style={styles.navSeparator} />
         <TouchableOpacity onPress={handleQuanTriClick}>
-          <Text style={[styles.navItem, isMobile && styles.navItemMobile, currentUser && styles.navItemAuthenticated]}>
+          <Text style={[styles.navItem, currentUser && styles.navItemAuthenticated]}>
             {currentUser ? `QUẢN TRỊ (${currentUser.fullName})` : 'QUẢN TRỊ'}
           </Text>
         </TouchableOpacity>
       </View>
       </ScrollView>
+      </View>
+      )}
 
-      {/* Main Content - Layout 2 cột (1 cột trên mobile) */}
+      {/* Main Content - trên web không flex:1 để tránh khoảng trắng lớn */}
       <ScrollView
         ref={scrollViewRef}
-        style={styles.scrollView}
+        style={[styles.scrollView, isWeb && styles.scrollViewWeb]}
+        contentContainerStyle={styles.scrollViewContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -216,6 +294,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  containerWeb: {
+    flex: 0,
+  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -234,14 +315,18 @@ const styles = StyleSheet.create({
   largeBannerContainer: {
     width: '100%',
     position: 'relative',
-    overflow: 'hidden', // Đảm bảo ảnh không tràn ra ngoài
-    maxWidth: 1200, // Giới hạn width giống navBar
-    alignSelf: 'center', // Căn giữa
+    overflow: 'hidden',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    minHeight: 200,
+  },
+  largeBannerContainerMobile: {
+    minHeight: 100,
   },
   largeBanner: {
     width: '100%',
     height: 200,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#e8e8e8',
     resizeMode: 'cover',
   },
   largeBannerMobile: {
@@ -255,43 +340,49 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 15,
+    zIndex: 10,
   },
   bannerOverlayContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     width: '100%',
+    height: '100%',
     maxWidth: 1200,
-    paddingHorizontal: 40, // Cùng padding với navBar
+    paddingHorizontal: 40,
     marginLeft: 'auto',
     marginRight: 'auto',
     overflow: 'hidden',
-    flex: 1,
   },
   bannerOverlayContentMobile: {
     paddingHorizontal: 12,
   },
+  // Ảnh banner 661x186 → để cao 200px cần rộng tối thiểu 200*(661/186) ≈ 711
   smallBannerWrapper: {
-    width: '35%', // Chiều rộng từ HOME đến QUẢN LÝ VĂN BẢN ĐIỀU HÀNH (khoảng 35% của navBar)
+    width: '50%',
+    minWidth: 711,
+    height: 200,
     flexShrink: 0,
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     justifyContent: 'center',
     overflow: 'hidden',
+    marginLeft: -20,
   },
   smallBannerWrapperMobile: {
     width: '28%',
+    minWidth: 358,
+    height: 100,
   },
   smallBanner: {
-    width: 1260,
-    height: 540,
+    width: '100%',
+    height: '100%',
     flexShrink: 0,
   },
   smallBannerMobile: {
-    width: 180,
-    height: 77,
+    width: '100%',
+    height: '100%',
   },
   headerTextWrapper: {
-    width: '65%', // Chiều rộng từ CỔNG THÔNG TIN đến QUẢN TRỊ (khoảng 65% của navBar)
+    width: '35%',
     flexShrink: 0,
     alignItems: 'flex-start',
     justifyContent: 'center',
@@ -363,10 +454,130 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  mobileTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1565c0',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    width: '100%',
+  },
+  hamburgerButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  mobileTopBarTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  mobileTopBarSpacer: {
+    width: 40,
+  },
+  drawerBackdrop: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  drawerBackdropTouchable: {
+    flex: 1,
+  },
+  drawerPanel: {
+    width: '85%',
+    maxWidth: 320,
+    backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'web' ? 24 : 48,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 16,
+    zIndex: 1,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  drawerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1976d2',
+  },
+  drawerCloseBtn: {
+    padding: 4,
+  },
+  drawerCloseText: {
+    fontSize: 22,
+    color: '#666',
+    fontWeight: '300',
+  },
+  drawerSearchBox: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  drawerSearchPlaceholder: {
+    fontSize: 14,
+    color: '#999',
+  },
+  drawerSectionLabel: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  drawerSectionLabelText: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  drawerMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#eee',
+  },
+  drawerMenuIcon: {
+    fontSize: 18,
+    marginRight: 12,
+    width: 24,
+    textAlign: 'center',
+  },
+  drawerMenuText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+  drawerMenuArrow: {
+    fontSize: 18,
+    color: '#999',
+    fontWeight: '300',
+  },
+  navBarOuter: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    flexShrink: 0,
+    backgroundColor: '#1565c0',
+  },
   navBarScroll: {
     width: '100%',
     maxWidth: 1200,
     alignSelf: 'center',
+    flexShrink: 0,
+    minHeight: 48,
   },
   navBarScrollContent: {
     flexGrow: 1,
@@ -382,6 +593,7 @@ const styles = StyleSheet.create({
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center',
+    minHeight: 48,
   },
   navBarMobile: {
     paddingHorizontal: 12,
@@ -409,8 +621,16 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollViewWeb: {
+    flex: 0,
+    flexGrow: 0,
+  },
+  scrollViewContent: {
+    paddingBottom: 24,
+  },
   content: {
     padding: 20,
+    paddingTop: 12,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center',
