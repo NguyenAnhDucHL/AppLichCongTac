@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
   subTitleMobile: { fontSize: 12, fontWeight: 'bold', color: '#fff', flexShrink: 0, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
 
   // New clean banner styles (shared with ScheduleScreenWeb)
-  bannerDesktop: { width: '100%', height: LARGE_BANNER_HEIGHT_DESKTOP, overflow: 'hidden', backgroundColor: '#e8f4f8' },
+  bannerDesktop: { width: '100%', maxWidth: 1200, alignSelf: 'center', height: LARGE_BANNER_HEIGHT_DESKTOP, overflow: 'hidden', backgroundColor: '#e8f4f8' },
   bannerLogoPanel: {},
   bannerLogoDesktop: { position: 'absolute', left: 0, top: 0, height: LARGE_BANNER_HEIGHT_DESKTOP, width: LARGE_BANNER_HEIGHT_DESKTOP * (661 / 186) },
   bannerTitlePanel: { position: 'absolute', right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'flex-end', paddingRight: 48, width: '50%' },

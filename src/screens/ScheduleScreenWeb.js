@@ -172,9 +172,7 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
                 <Text style={styles.drawerCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.drawerSearchBox}>
-              <Text style={styles.drawerSearchPlaceholder}>🔍 Tìm kiếm</Text>
-            </View>
+
             <TouchableOpacity style={styles.drawerMenuItem} onPress={() => { setShowDrawer(false); handleQuanTriClick(); }}>
               <Text style={styles.drawerMenuIcon}>👤</Text>
               <Text style={styles.drawerMenuText}>{currentUser ? `Quản trị (${currentUser.fullName})` : 'Đăng nhập / Quản trị'}</Text>
@@ -348,6 +346,8 @@ const styles = StyleSheet.create({
   // Desktop: full-width container, images absolute
   bannerDesktop: {
     width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
     height: LARGE_BANNER_HEIGHT_DESKTOP,
     overflow: 'hidden',
     flexDirection: 'row',
