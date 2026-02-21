@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Platform, TouchableOpacity, View } from 'react-native';
+import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ClockIcon } from './PlatformIcon';
@@ -50,82 +50,60 @@ export default function TimePickerField({
   }, [value]);
 
   if (Platform.OS === 'web') {
+    // Dùng input type="time" của HTML5 - mở đồng hồ chọn giờ native của trình duyệt
     return (
-      <TextInput
-        label={label}
-        value={value || ''}
-        onChangeText={(text) => {
-          // Chỉ cho phép số và dấu :
-          const cleaned = text.replace(/[^0-9:]/g, '');
-          
-          // Giới hạn độ dài tối đa là 5 ký tự (HH:mm)
-          if (cleaned.length > 5) return;
-          
-          let formatted = cleaned;
-          
-          // Tự động thêm dấu : sau 2 số đầu (chỉ khi chưa có dấu :)
-          if (cleaned.length > 2 && !cleaned.includes(':')) {
-            formatted = cleaned.slice(0, 2) + ':' + cleaned.slice(2);
-          }
-          
-          // Xử lý khi đã có dấu :
-          if (formatted.includes(':')) {
-            const parts = formatted.split(':');
-            let hours = parts[0] || '';
-            let minutes = parts[1] || '';
-            
-            // Giới hạn giờ tối đa 2 số
-            if (hours.length > 2) {
-              hours = hours.slice(0, 2);
-            }
-            
-            // Giới hạn phút tối đa 2 số
-            if (minutes.length > 2) {
-              minutes = minutes.slice(0, 2);
-            }
-            
-            // Tạo lại formatted sau khi giới hạn
-            formatted = hours + ':' + minutes;
-            
-            // Validate giờ (0-23) - CHỈ validate khi đã nhập đủ 2 số
-            if (hours.length === 2) {
-              const h = parseInt(hours, 10);
-              if (isNaN(h) || h > 23) {
-                return; // Không cho phép giờ > 23
-              }
-            }
-            
-            // Validate phút (0-59) - CHỈ validate khi đã nhập đủ 2 số
-            // QUAN TRỌNG: Cho phép nhập từng số một (ví dụ: "08:1" → cho phép)
-            if (minutes.length === 2) {
-              const m = parseInt(minutes, 10);
-              if (isNaN(m) || m > 59) {
-                return; // Không cho phép phút > 59
-              }
-            }
-            
-            // Cho phép nhập tiếp (kể cả khi chưa đủ 2 số cho phút)
-            onChange?.(formatted);
-          } else {
-            // Chưa có dấu :, đang nhập giờ
-            if (cleaned.length === 2) {
-              const h = parseInt(cleaned, 10);
-              if (isNaN(h) || h > 23) {
-                return; // Không cho phép giờ > 23
-              }
-            }
-            // Cho phép nhập tiếp
-            onChange?.(formatted);
-          }
-        }}
-        placeholder={placeholder}
-        mode="outlined"
-        disabled={disabled}
-        error={error}
-        helperText={helperText}
-        right={<TextInput.Icon icon={() => <ClockIcon size={24} color="#666" />} />}
-        keyboardType="numeric"
-      />
+      <View>
+        {/* Label */}
+        <Text style={{
+          fontSize: 12,
+          color: error ? '#B00020' : '#6200ea',
+          marginBottom: 4,
+          marginLeft: 2,
+          fontWeight: '500',
+        }}>
+          {label}
+        </Text>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderWidth: error ? 2 : 1,
+          borderColor: error ? '#B00020' : '#6200ea',
+          borderRadius: 4,
+          backgroundColor: disabled ? '#f5f5f5' : '#fff',
+          paddingHorizontal: 12,
+          height: 56,
+        }}>
+          <input
+            type="time"
+            value={value || ''}
+            disabled={disabled}
+            onChange={(e) => {
+              onChange?.(e.target.value);
+            }}
+            style={{
+              flex: 1,
+              border: 'none',
+              outline: 'none',
+              fontSize: 16,
+              color: value ? '#333' : '#999',
+              backgroundColor: 'transparent',
+              fontFamily: 'inherit',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              WebkitAppearance: 'none',
+            }}
+          />
+        </View>
+        {helperText ? (
+          <Text style={{
+            fontSize: 12,
+            color: error ? '#B00020' : '#666',
+            marginTop: 4,
+            marginLeft: 2,
+          }}>
+            {helperText}
+          </Text>
+        ) : null}
+      </View>
     );
   }
 

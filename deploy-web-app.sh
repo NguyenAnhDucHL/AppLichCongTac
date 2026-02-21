@@ -35,20 +35,15 @@ cp -r web-build/* public/app/
 # Bước 2.5: Sửa script path (từ /_expo thành /app/_expo) và assets path
 echo "🔧 Fixing script paths..."
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
     sed -i '' 's|src="/_expo|src="/app/_expo|g' public/app/index.html
     sed -i '' 's|href="/_expo|href="/app/_expo|g' public/app/index.html
-    # Sửa đường dẫn assets trong JS files
-    find public/app -name "*.js" -type f -exec sed -i '' 's|"/assets/|"/app/assets/|g' {} +
-    find public/app -name "*.js" -type f -exec sed -i '' "s|'/assets/|'/app/assets/|g" {} +
+    for f in public/app/_expo/static/js/web/*.js; do [ -f "$f" ] && sed -i '' 's|"/assets/|"/app/assets/|g' "$f" && sed -i '' "s|'/assets/|'/app/assets/|g" "$f"; done
 else
-    # Linux
     sed -i 's|src="/_expo|src="/app/_expo|g' public/app/index.html
     sed -i 's|href="/_expo|href="/app/_expo|g' public/app/index.html
-    # Sửa đường dẫn assets trong JS files
-    find public/app -name "*.js" -type f -exec sed -i 's|"/assets/|"/app/assets/|g' {} +
-    find public/app -name "*.js" -type f -exec sed -i "s|'/assets/|'/app/assets/|g" {} +
+    for f in public/app/_expo/static/js/web/*.js; do [ -f "$f" ] && sed -i 's|"/assets/|"/app/assets/|g' "$f" && sed -i "s|'/assets/|'/app/assets/|g" "$f"; done
 fi
+echo "   Paths updated."
 
 # Bước 3: Deploy
 echo "🚀 Deploying..."

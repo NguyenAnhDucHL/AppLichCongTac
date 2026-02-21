@@ -6,6 +6,7 @@ import { vi } from 'date-fns/locale';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { hasPermission } from '../services/AuthService';
+import { getActivityLogs, listenToActivityLogs } from '../services/ActivityLogService';
 import { CheckboxIcon } from '../components/PlatformIcon';
 
 const BREAKPOINT_MOBILE = 768;
@@ -17,13 +18,18 @@ const ReportsAnalytics = ({ onBack }) => {
   const [scheduleStats, setScheduleStats] = useState({});
   const [userStats, setUserStats] = useState({});
   const [activityLogs, setActivityLogs] = useState([]);
+  const [lastLogDoc, setLastLogDoc] = useState(null);
+  const [hasMoreLogs, setHasMoreLogs] = useState(false);
+  const [loadingMoreLogs, setLoadingMoreLogs] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('week'); // week, month, quarter
   const [canViewAudit, setCanViewAudit] = useState(false);
 
   useEffect(() => {
     checkPermissions();
-    loadReportsData();
-  }, [selectedPeriod]);
+    if (canViewAudit || !canViewAudit) {
+      loadReportsData();
+    }
+  }, [selectedPeriod, canViewAudit]);
 
   const checkPermissions = async () => {
     const auditPermission = await hasPermission('audit:read');
@@ -50,25 +56,25 @@ const ReportsAnalytics = ({ onBack }) => {
       const schedulesSnapshot = await getDocs(collection(db, 'schedules'));
       const now = new Date();
       const startDate = getStartDate(selectedPeriod, now);
-      
+
       let totalEvents = 0;
       let totalDays = 0;
       let eventsByDay = {};
       let eventsByTime = {};
-      
+
       schedulesSnapshot.forEach(doc => {
         const data = doc.data();
         const scheduleDate = new Date(data.date);
-        
+
         if (isWithinInterval(scheduleDate, { start: startDate, end: now })) {
           totalDays++;
           const events = data.events || [];
           totalEvents += events.length;
-          
+
           // Events by day
           const dayName = format(scheduleDate, 'EEEE', { locale: vi });
           eventsByDay[dayName] = (eventsByDay[dayName] || 0) + events.length;
-          
+
           // Events by time
           events.forEach(event => {
             const hour = event.time.split(':')[0];
@@ -102,17 +108,17 @@ const ReportsAnalytics = ({ onBack }) => {
       let activeUsers = 0;
       let usersByRole = {};
       let recentLogins = 0;
-      
+
       const sevenDaysAgo = subDays(new Date(), 7);
-      
+
       usersSnapshot.forEach(doc => {
         const userData = doc.data();
         totalUsers++;
-        
+
         if (userData.isActive) activeUsers++;
-        
+
         usersByRole[userData.role] = (usersByRole[userData.role] || 0) + 1;
-        
+
         if (userData.lastLogin && new Date(userData.lastLogin.seconds * 1000) > sevenDaysAgo) {
           recentLogins++;
         }
@@ -131,43 +137,56 @@ const ReportsAnalytics = ({ onBack }) => {
     }
   };
 
-  const loadActivityLogs = async () => {
+  // Dùng ref để giữ unsubscribe function
+  const unsubscribeLogsRef = React.useRef(null);
+
+  const loadActivityLogs = () => {
     try {
-      // Tạm thời dùng dữ liệu fake vì chưa implement audit logs
-      const fakeLogs = [
-        {
-          id: '1',
-          action: 'Đăng nhập hệ thống',
-          user: 'Quản trị viên',
-          timestamp: new Date(),
-          details: 'Đăng nhập thành công từ IP 192.168.1.100'
-        },
-        {
-          id: '2',
-          action: 'Thêm sự kiện lịch',
-          user: 'Biên tập viên',
-          timestamp: subDays(new Date(), 1),
-          details: 'Thêm sự kiện lúc 14:00 ngày 16/01/2026'
-        },
-        {
-          id: '3',
-          action: 'Cập nhật thông tin người dùng',
-          user: 'Quản trị viên',
-          timestamp: subDays(new Date(), 2),
-          details: 'Cập nhật quyền hạn cho editor@campha.gov.vn'
-        },
-        {
-          id: '4',
-          action: 'Xóa sự kiện lịch',
-          user: 'Quản trị viên',
-          timestamp: subDays(new Date(), 3),
-          details: 'Xóa sự kiện lúc 10:00 ngày 15/01/2026'
-        }
-      ];
-      
-      setActivityLogs(fakeLogs);
+      const now = new Date();
+      const startDate = getStartDate(selectedPeriod, now);
+
+      // Hủy listener cũ nếu có
+      if (unsubscribeLogsRef.current) {
+        unsubscribeLogsRef.current();
+      }
+
+      // Đăng ký listener mới
+      unsubscribeLogsRef.current = listenToActivityLogs(startDate, (result) => {
+        setActivityLogs(result.logs);
+        setLastLogDoc(result.lastDoc);
+        setHasMoreLogs(result.hasMore);
+      }, 20);
+
     } catch (error) {
-      console.error('Error loading activity logs:', error);
+      console.error('Error setting up activity logs listener:', error);
+    }
+  };
+
+  // Clean up listener khi component unmount
+  useEffect(() => {
+    return () => {
+      if (unsubscribeLogsRef.current) {
+        unsubscribeLogsRef.current();
+      }
+    };
+  }, []);
+
+  const loadMoreLogs = async () => {
+    if (!hasMoreLogs || loadingMoreLogs) return;
+
+    try {
+      setLoadingMoreLogs(true);
+      const now = new Date();
+      const startDate = getStartDate(selectedPeriod, now);
+      const { logs, lastDoc, hasMore } = await getActivityLogs(startDate, lastLogDoc, 20);
+
+      setActivityLogs(prev => [...prev, ...logs]);
+      setLastLogDoc(lastDoc);
+      setHasMoreLogs(hasMore);
+    } catch (error) {
+      console.error('Error loading more activity logs:', error);
+    } finally {
+      setLoadingMoreLogs(false);
     }
   };
 
@@ -199,7 +218,7 @@ const ReportsAnalytics = ({ onBack }) => {
 
   const renderBarChart = (data, title, color = '#1976d2') => {
     const maxValue = Math.max(...Object.values(data));
-    
+
     return (
       <Card style={styles.chartCard}>
         <Card.Content>
@@ -208,14 +227,14 @@ const ReportsAnalytics = ({ onBack }) => {
             {Object.entries(data).map(([key, value]) => (
               <View key={key} style={styles.barContainer}>
                 <View style={styles.bar}>
-                  <View 
+                  <View
                     style={[
-                      styles.barFill, 
-                      { 
+                      styles.barFill,
+                      {
                         height: `${maxValue > 0 ? (value / maxValue) * 100 : 0}%`,
                         backgroundColor: color
                       }
-                    ]} 
+                    ]}
                   />
                 </View>
                 <Text style={styles.barLabel}>{key}</Text>
@@ -263,7 +282,7 @@ const ReportsAnalytics = ({ onBack }) => {
 
       <ScrollView style={[styles.content, isMobile && styles.contentMobile]}>
         <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Thống kê Lịch Công Tác</Text>
-        
+
         <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
           <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
@@ -286,11 +305,11 @@ const ReportsAnalytics = ({ onBack }) => {
         </View>
 
         {/* Charts */}
-        {scheduleStats.eventsByDay && Object.keys(scheduleStats.eventsByDay).length > 0 && 
+        {scheduleStats.eventsByDay && Object.keys(scheduleStats.eventsByDay).length > 0 &&
           renderBarChart(scheduleStats.eventsByDay, 'Sự kiện theo thứ trong tuần')
         }
 
-        {scheduleStats.eventsByTime && Object.keys(scheduleStats.eventsByTime).length > 0 && 
+        {scheduleStats.eventsByTime && Object.keys(scheduleStats.eventsByTime).length > 0 &&
           renderBarChart(scheduleStats.eventsByTime, 'Sự kiện theo giờ trong ngày', '#4caf50')
         }
 
@@ -304,7 +323,7 @@ const ReportsAnalytics = ({ onBack }) => {
                 {index + 1}. {day}: {count} sự kiện
               </Text>
             ))}
-            
+
             <Text style={styles.insightSubtitle}>Giờ trong ngày:</Text>
             {scheduleStats.busyHours?.map(([hour, count], index) => (
               <Text key={hour} style={styles.insightItem}>
@@ -315,7 +334,7 @@ const ReportsAnalytics = ({ onBack }) => {
         </Card>
 
         <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Thống kê Người Dùng</Text>
-        
+
         <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
           <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
             <Card.Content style={styles.statContent}>
@@ -344,35 +363,53 @@ const ReportsAnalytics = ({ onBack }) => {
         {canViewAudit && (
           <>
             <Text style={styles.sectionTitle}>Nhật ký Hoạt động</Text>
-            {activityLogs.map(log => (
-              <Card key={log.id} style={styles.logCard}>
-                <Card.Content>
-                  <View style={styles.logHeader}>
-                    <Text style={styles.logAction}>{log.action}</Text>
-                    <Text style={styles.logTime}>
-                      {format(log.timestamp, 'HH:mm dd/MM/yyyy')}
-                    </Text>
-                  </View>
-                  <Text style={styles.logUser}>Người thực hiện: {log.user}</Text>
-                  <Text style={styles.logDetails}>{log.details}</Text>
-                </Card.Content>
-              </Card>
-            ))}
+            {activityLogs.length === 0 ? (
+              <Text style={{ textAlign: 'center', color: '#666', marginTop: 10, marginBottom: 20 }}>
+                Không có hoạt động nào trong khoảng thời gian này
+              </Text>
+            ) : (
+              activityLogs.map(log => (
+                <Card key={log.id} style={styles.logCard}>
+                  <Card.Content>
+                    <View style={styles.logHeader}>
+                      <Text style={styles.logAction}>{log.action}</Text>
+                      <Text style={styles.logTime}>
+                        {format(log.timestamp, 'HH:mm dd/MM/yyyy')}
+                      </Text>
+                    </View>
+                    <Text style={styles.logUser}>Người thực hiện: {log.userName}</Text>
+                    <Text style={styles.logDetails}>{log.details}</Text>
+                  </Card.Content>
+                </Card>
+              ))
+            )}
+
+            {hasMoreLogs && (
+              <Button
+                mode="text"
+                onPress={loadMoreLogs}
+                loading={loadingMoreLogs}
+                disabled={loadingMoreLogs}
+                style={{ marginTop: 8, marginBottom: 16 }}
+              >
+                Tải thêm nhật ký
+              </Button>
+            )}
           </>
         )}
 
         <View style={[styles.exportSection, isMobile && styles.exportSectionMobile]}>
           <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Xuất báo cáo</Text>
           <View style={[styles.exportButtons, isMobile && styles.exportButtonsMobile]}>
-            <Button 
-              mode="outlined" 
+            <Button
+              mode="outlined"
               onPress={() => alert('Tính năng xuất PDF đang phát triển')}
               style={[styles.exportButton, isMobile && styles.exportButtonMobile]}
             >
               Xuất PDF
             </Button>
-            <Button 
-              mode="outlined" 
+            <Button
+              mode="outlined"
               onPress={() => alert('Tính năng xuất Excel đang phát triển')}
               style={[styles.exportButton, isMobile && styles.exportButtonMobile]}
             >

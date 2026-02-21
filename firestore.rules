@@ -31,5 +31,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true; // Tạm thời, admin check ở app level
     }
+
+    // Activity Logs - public read/write (admin check ở app level)
+    match /activityLogs/{logId} {
+      allow read, write: if true;
+    }
   }
 }

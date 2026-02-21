@@ -6,6 +6,7 @@ import { vi } from 'date-fns/locale';
 import { collection, doc, getDoc, setDoc, deleteDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { hasPermission } from '../services/AuthService';
+import { logActivity, LOG_ACTIONS } from '../services/ActivityLogService';
 import TimePickerField from '../components/TimePickerField';
 import CommonModal from '../components/CommonModal';
 import { PlusIcon, EditIcon, DeleteIcon } from '../components/PlatformIcon';
@@ -25,7 +26,7 @@ const ScheduleManagement = ({ onBack }) => {
   const [canWrite, setCanWrite] = useState(false);
   const [canDelete, setCanDelete] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // CommonModal state
   const [modalState, setModalState] = useState({
     visible: false,
@@ -37,7 +38,7 @@ const ScheduleManagement = ({ onBack }) => {
     cancelText: 'Hủy',
     confirmButtonStyle: 'default' // 'default' | 'destructive' | 'success'
   });
-  
+
   const showModal = (title, message, onConfirm = null, options = {}) => {
     setModalState({
       visible: true,
@@ -50,7 +51,7 @@ const ScheduleManagement = ({ onBack }) => {
       confirmButtonStyle: options.confirmButtonStyle || 'default'
     });
   };
-  
+
   const hideModal = () => {
     setModalState(prev => ({ ...prev, visible: false }));
   };
@@ -71,7 +72,7 @@ const ScheduleManagement = ({ onBack }) => {
     try {
       setLoading(true);
       const schedulesData = {};
-      
+
       // Load 7 ngày từ hôm nay
       for (let i = 0; i < 7; i++) {
         const date = format(addDays(new Date(), i), 'yyyy-MM-dd');
@@ -82,7 +83,7 @@ const ScheduleManagement = ({ onBack }) => {
           schedulesData[date] = [];
         }
       }
-      
+
       setSchedules(schedulesData);
     } catch (error) {
       showModal('Lỗi', 'Không thể tải lịch công tác', null, { showCancel: false, confirmText: 'Đóng' });
@@ -99,7 +100,7 @@ const ScheduleManagement = ({ onBack }) => {
         updatedAt: new Date(),
         updatedBy: 'admin' // TODO: get from current user
       });
-      
+
       setSchedules(prev => ({
         ...prev,
         [date]: events
@@ -127,7 +128,7 @@ const ScheduleManagement = ({ onBack }) => {
     // Sử dụng eventData từ modal nếu có, nếu không thì dùng newEvent state
     // Validation đã được xử lý trong EventModal, nên eventData phải hợp lệ khi đến đây
     const eventToSave = eventData || newEvent;
-    
+
     // Defensive check: nếu vẫn không có dữ liệu (không nên xảy ra), thì return
     if (!eventToSave || (!eventToSave.time?.trim() || !eventToSave.content?.trim())) {
       console.warn('handleAddEvent: Invalid event data, validation should have caught this');
@@ -159,24 +160,25 @@ const ScheduleManagement = ({ onBack }) => {
       });
 
       await saveSchedule(selectedDate, updatedEvents);
-      
+      logActivity(LOG_ACTIONS.SCHEDULE_ADD, `Thêm sự kiện lúc ${eventToSave.time} ngày ${formatDisplayDate(selectedDate)}`);
+
       // Đóng modal và reset form TRƯỚC để UI cập nhật ngay
       setIsSaving(false);
       setShowAddModal(false);
       setNewEvent({ time: '', content: '' });
-      
+
       // Hiển thị thông báo sau khi UI đã cập nhật
       setTimeout(() => {
-        showModal('Thành công', 'Đã thêm sự kiện mới', null, { 
-          showCancel: false, 
+        showModal('Thành công', 'Đã thêm sự kiện mới', null, {
+          showCancel: false,
           confirmText: 'Đóng',
           confirmButtonStyle: 'success'
         });
       }, 100);
     } catch (error) {
       setIsSaving(false);
-      showModal('Lỗi', 'Không thể thêm sự kiện', null, { 
-        showCancel: false, 
+      showModal('Lỗi', 'Không thể thêm sự kiện', null, {
+        showCancel: false,
         confirmText: 'Đóng',
         confirmButtonStyle: 'default'
       });
@@ -187,7 +189,7 @@ const ScheduleManagement = ({ onBack }) => {
     // Sử dụng eventData từ modal nếu có, nếu không thì dùng editingEvent state
     // Validation đã được xử lý trong EventModal, nên eventData phải hợp lệ khi đến đây
     const eventToSave = eventData || editingEvent;
-    
+
     // Defensive check: nếu vẫn không có dữ liệu (không nên xảy ra), thì return
     if (!eventToSave || (!eventToSave.time?.trim() || !eventToSave.content?.trim())) {
       console.warn('handleEditEvent: Invalid event data, validation should have caught this');
@@ -197,8 +199,8 @@ const ScheduleManagement = ({ onBack }) => {
     setIsSaving(true);
     try {
       const currentEvents = schedules[selectedDate] || [];
-      const updatedEvents = currentEvents.map(event => 
-        event.id === eventToSave.id 
+      const updatedEvents = currentEvents.map(event =>
+        event.id === eventToSave.id
           ? { ...eventToSave, time: formatTimeForSave(eventToSave.time), content: eventToSave.content.trim(), updatedAt: new Date(), updatedBy: 'admin' }
           : event
       );
@@ -216,24 +218,25 @@ const ScheduleManagement = ({ onBack }) => {
       });
 
       await saveSchedule(selectedDate, updatedEvents);
-      
+      logActivity(LOG_ACTIONS.SCHEDULE_EDIT, `Cập nhật sự kiện lúc ${eventToSave.time} ngày ${formatDisplayDate(selectedDate)}`);
+
       // Đóng modal và reset TRƯỚC để UI cập nhật ngay
       setIsSaving(false);
       setShowEditModal(false);
       setEditingEvent(null);
-      
+
       // Hiển thị thông báo sau khi UI đã cập nhật
       setTimeout(() => {
-        showModal('Thành công', 'Đã cập nhật sự kiện', null, { 
-          showCancel: false, 
+        showModal('Thành công', 'Đã cập nhật sự kiện', null, {
+          showCancel: false,
           confirmText: 'Đóng',
           confirmButtonStyle: 'success'
         });
       }, 100);
     } catch (error) {
       setIsSaving(false);
-      showModal('Lỗi', 'Không thể cập nhật sự kiện', null, { 
-        showCancel: false, 
+      showModal('Lỗi', 'Không thể cập nhật sự kiện', null, {
+        showCancel: false,
         confirmText: 'Đóng',
         confirmButtonStyle: 'default'
       });
@@ -247,13 +250,17 @@ const ScheduleManagement = ({ onBack }) => {
       async () => {
         try {
           const currentEvents = schedules[selectedDate] || [];
+          const eventToDelete = currentEvents.find(e => e.id === eventId);
           const updatedEvents = currentEvents.filter(event => event.id !== eventId);
-          
+
           await saveSchedule(selectedDate, updatedEvents);
+          if (eventToDelete) {
+            logActivity(LOG_ACTIONS.SCHEDULE_DELETE, `Xóa sự kiện lúc ${eventToDelete.time} ngày ${formatDisplayDate(selectedDate)}`);
+          }
           hideModal();
           setTimeout(() => {
-            showModal('Thành công', 'Đã xóa sự kiện', null, { 
-              showCancel: false, 
+            showModal('Thành công', 'Đã xóa sự kiện', null, {
+              showCancel: false,
               confirmText: 'Đóng',
               confirmButtonStyle: 'success'
             });
@@ -261,8 +268,8 @@ const ScheduleManagement = ({ onBack }) => {
         } catch (error) {
           hideModal();
           setTimeout(() => {
-            showModal('Lỗi', 'Không thể xóa sự kiện', null, { 
-              showCancel: false, 
+            showModal('Lỗi', 'Không thể xóa sự kiện', null, {
+              showCancel: false,
               confirmText: 'Đóng',
               confirmButtonStyle: 'default'
             });
@@ -288,7 +295,7 @@ const ScheduleManagement = ({ onBack }) => {
     if (Platform.OS === 'web') {
       // Trên web: dùng mouse events để hiển thị tooltip khi hover
       return (
-        <View 
+        <View
           style={styles.tooltipContainer}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
@@ -324,14 +331,14 @@ const ScheduleManagement = ({ onBack }) => {
     useEffect(() => {
       const wasVisible = prevVisibleRef.current;
       const isNowVisible = visible;
-      
+
       // Khi modal mở lần đầu (false -> true)
       if (!wasVisible && isNowVisible && event) {
         setLocalEvent({ ...event });
         setErrors({}); // Reset errors khi mở modal
         setShowValidationErrors(false); // Reset validation flag
       }
-      
+
       // Khi modal đóng (true -> false)
       if (wasVisible && !isNowVisible) {
         // Reset để sẵn sàng cho lần mở tiếp theo
@@ -339,7 +346,7 @@ const ScheduleManagement = ({ onBack }) => {
         setErrors({}); // Reset errors khi đóng modal
         setShowValidationErrors(false); // Reset validation flag
       }
-      
+
       prevVisibleRef.current = isNowVisible;
     }, [visible]); // CHỈ phụ thuộc vào visible, KHÔNG phụ thuộc vào event
 
@@ -372,7 +379,7 @@ const ScheduleManagement = ({ onBack }) => {
     // Validate form
     const validateForm = () => {
       const newErrors = {};
-      
+
       // Validate thời gian (bắt buộc)
       if (!localEvent.time || !localEvent.time.trim()) {
         newErrors.time = 'Vui lòng nhập thời gian sự kiện';
@@ -383,16 +390,16 @@ const ScheduleManagement = ({ onBack }) => {
           newErrors.time = 'Thời gian không hợp lệ. Vui lòng nhập theo định dạng HH:mm (ví dụ: 08:00)';
         }
       }
-      
+
       // Validate nội dung (bắt buộc)
       if (!localEvent.content || !localEvent.content.trim()) {
         newErrors.content = 'Vui lòng nhập nội dung sự kiện';
       }
-      
+
       // QUAN TRỌNG: Luôn set errors (kể cả khi rỗng) để clear errors cũ
       // Nếu không có lỗi, newErrors = {} (rỗng) → setErrors({}) sẽ clear tất cả errors
       setErrors(newErrors);
-      
+
       // Hiển thị validation errors nếu có lỗi
       if (Object.keys(newErrors).length > 0) {
         setShowValidationErrors(true);
@@ -406,7 +413,7 @@ const ScheduleManagement = ({ onBack }) => {
         // Nếu không có lỗi, ẩn validation errors
         setShowValidationErrors(false);
       }
-      
+
       return Object.keys(newErrors).length === 0;
     };
 
@@ -416,10 +423,10 @@ const ScheduleManagement = ({ onBack }) => {
       if (!validateForm()) {
         return; // Dừng lại nếu có lỗi validation (errors đã được set và showValidationErrors đã được set thành true)
       }
-      
+
       // Nếu validation pass, ẩn validation errors
       setShowValidationErrors(false);
-      
+
       if (onSave) {
         // Update parent state trước khi save
         if (onEventChange) {
@@ -441,7 +448,7 @@ const ScheduleManagement = ({ onBack }) => {
             <View style={[styles.modalContent, isMobileLayout && styles.modalContentMobile]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{title}</Text>
-                
+
                 {/* Error banner - hiển thị ở trên cùng nếu có lỗi */}
                 {hasErrors && (
                   <View style={styles.errorBanner}>
@@ -451,8 +458,8 @@ const ScheduleManagement = ({ onBack }) => {
                   </View>
                 )}
               </View>
-              
-              <ScrollView 
+
+              <ScrollView
                 ref={scrollViewRef}
                 style={styles.modalScrollView}
                 contentContainerStyle={styles.modalScrollContent}
@@ -470,7 +477,7 @@ const ScheduleManagement = ({ onBack }) => {
                     helperText={errors.time}
                   />
                 </View>
-                
+
                 <View style={styles.fieldContainer}>
                   <TextInput
                     ref={contentInputRef}
@@ -487,7 +494,7 @@ const ScheduleManagement = ({ onBack }) => {
                   />
                 </View>
               </ScrollView>
-              
+
               {isLoading ? (
                 <View style={styles.modalLoadingContainer}>
                   <ActivityIndicator size="large" color="#1976d2" />
@@ -496,10 +503,10 @@ const ScheduleManagement = ({ onBack }) => {
               ) : (
                 <View style={styles.modalButtons}>
                   <Button onPress={onDismiss} style={styles.modalButton} disabled={isLoading}>Hủy</Button>
-                  <Button 
-                    mode="contained" 
-                    onPress={handleSave} 
-                    style={styles.modalButton} 
+                  <Button
+                    mode="contained"
+                    onPress={handleSave}
+                    style={styles.modalButton}
                     disabled={isLoading}
                     loading={isLoading}
                   >
@@ -586,8 +593,8 @@ const ScheduleManagement = ({ onBack }) => {
                               setEditingEvent(event);
                               setShowEditModal(true);
                             } else {
-                              showModal('Lỗi', 'Bạn không có quyền chỉnh sửa sự kiện', null, { 
-                                showCancel: false, 
+                              showModal('Lỗi', 'Bạn không có quyền chỉnh sửa sự kiện', null, {
+                                showCancel: false,
                                 confirmText: 'Đóng'
                               });
                             }
@@ -604,8 +611,8 @@ const ScheduleManagement = ({ onBack }) => {
                             if (canDelete) {
                               handleDeleteEvent(event.id);
                             } else {
-                              showModal('Lỗi', 'Bạn không có quyền xóa sự kiện', null, { 
-                                showCancel: false, 
+                              showModal('Lỗi', 'Bạn không có quyền xóa sự kiện', null, {
+                                showCancel: false,
                                 confirmText: 'Đóng'
                               });
                             }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, TouchableOpacity, Linking, useWindowDimensions, Modal, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Platform, Image, ImageBackground, TouchableOpacity, Linking, useWindowDimensions, Modal, TextInput } from 'react-native';
+
 import { Text, Card, ActivityIndicator, Title, Paragraph } from 'react-native-paper';
 import { format, isToday, parseISO, addDays as addDaysFns } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -7,6 +8,10 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../services/AuthService';
 
 const BREAKPOINT_MOBILE = 768;
+// Kích thước banner: desktop 200px, mobile 160px (đổi 1 chỗ khi cần chỉnh)
+const LARGE_BANNER_HEIGHT_DESKTOP = 200;
+const LARGE_BANNER_HEIGHT_MOBILE = 160;
+const SMALL_BANNER_ASPECT = 661 / 186; // ảnh banner-n1-cdn.png
 
 // Icon hamburger (3 gạch ngang)
 const HamburgerIcon = ({ size = 24, color = '#fff', style }) => (
@@ -98,45 +103,64 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
   const isWeb = Platform.OS === 'web';
 
   return (
-    <View style={[styles.container, isWeb && styles.containerWeb]}>
-      {/* Header với banner - banner-n1-cdn.png nằm trên cùng (zIndex) */}
-      <View style={styles.headerContainer}>
-        <View style={[styles.largeBannerContainer, isMobile && styles.largeBannerContainerMobile]}>
-          <Image 
-            source={require('../../assets/images/noimage4.jpg')} 
-            style={[styles.largeBanner, isMobile && styles.largeBannerMobile]}
+    <View style={[styles.container, isMobile && styles.containerMobile, isWeb && !isMobile && styles.containerWeb]}>
+
+      {/* ── BANNER ──────────────────────────────────────── */}
+      {isMobile ? (
+        <View style={styles.mobileHeaderWrapper}>
+          {/* Banner strip */}
+          <ImageBackground
+            source={require('../../assets/images/noimage4.jpg')}
+            style={styles.bannerStrip}
             resizeMode="cover"
-          />
-          <View style={styles.bannerOverlay} pointerEvents="box-none">
-            <View style={[styles.bannerOverlayContent, isMobile && styles.bannerOverlayContentMobile]}>
-              <View style={[styles.smallBannerWrapper, isMobile && styles.smallBannerWrapperMobile]}>
-                <Image 
-                  source={require('../../assets/images/banner-n1-cdn.png')} 
-                  style={[styles.smallBanner, isMobile && styles.smallBannerMobile]}
-                  resizeMode="contain"
-                />
-              </View>
-              <View style={[styles.headerTextWrapper, isMobile && styles.headerTextWrapperMobile]}>
-                <View style={[styles.headerTextContainer, isMobile && styles.headerTextContainerMobile]}>
-                  <Text style={[styles.mainTitle, isMobile && styles.mainTitleMobile]}>LỊCH CÔNG TÁC</Text>
-                  <Text style={[styles.subTitle, isMobile && styles.subTitleMobile]}>UBND PHƯỜNG CẨM PHẢ</Text>
-                </View>
-              </View>
+          >
+            {/* Dim overlay */}
+            <View style={styles.bannerDimMobile} />
+            {/* Quốc huy — circular crop, absolute left */}
+            <View style={styles.bannerSealCircle}>
+              <Image
+                source={require('../../assets/images/banner-n1-cdn.png')}
+                style={styles.bannerSealImg}
+                resizeMode="cover"
+              />
             </View>
+            {/* Text — absolute right */}
+            <View style={styles.bannerTextMobile}>
+              <Text style={styles.mainTitleMobile} numberOfLines={1}>LỊCH CÔNG TÁC</Text>
+              <Text style={styles.subTitleMobile} numberOfLines={2}>UBND PHƯỜNG CẨM PHẢ</Text>
+            </View>
+          </ImageBackground>
+          {/* Top blue bar */}
+          <View style={styles.mobileTopBar}>
+            <TouchableOpacity onPress={() => setShowDrawer(true)} style={styles.hamburgerButton} activeOpacity={0.7}>
+              <HamburgerIcon size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.mobileTopBarTitle} numberOfLines={1}>LỊCH CÔNG TÁC</Text>
+            <View style={styles.mobileTopBarSpacer} />
           </View>
         </View>
-      </View>
-
-      {/* Mobile: Thanh trên với hamburger + tiêu đề */}
-      {isMobile && (
-        <View style={styles.mobileTopBar}>
-          <TouchableOpacity onPress={() => setShowDrawer(true)} style={styles.hamburgerButton} activeOpacity={0.7}>
-            <HamburgerIcon size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.mobileTopBarTitle} numberOfLines={1}>LỊCH CÔNG TÁC</Text>
-          <View style={styles.mobileTopBarSpacer} />
-        </View>
+      ) : (
+        /* Desktop banner */
+        <ImageBackground
+          source={require('../../assets/images/noimage4.jpg')}
+          style={styles.bannerDesktop}
+          resizeMode="cover"
+        >
+          {/* Logo — absolute left */}
+          <Image
+            source={require('../../assets/images/banner-n1-cdn.png')}
+            style={styles.bannerLogoDesktop}
+            resizeMode="contain"
+          />
+          {/* Title — absolute right */}
+          <View style={styles.bannerTitlePanel}>
+            <Text style={styles.mainTitle} numberOfLines={1}>LỊCH CÔNG TÁC</Text>
+            <Text style={styles.subTitle} numberOfLines={1}>UBND PHƯỜNG CẨM PHẢ</Text>
+          </View>
+        </ImageBackground>
       )}
+
+
 
       {/* Drawer menu (mobile) - hiện khi bấm hamburger */}
       <Modal visible={showDrawer} transparent animationType="slide">
@@ -179,7 +203,7 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
               <Text style={styles.drawerMenuText}>Thư điện tử</Text>
               <Text style={styles.drawerMenuArrow}>›</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.drawerMenuItem} onPress={() => setShowDrawer(false)}>
+            <TouchableOpacity style={styles.drawerMenuItem} onPress={() => { setShowDrawer(false); navigate('/app/search'); }}>
               <Text style={styles.drawerMenuIcon}>🔍</Text>
               <Text style={styles.drawerMenuText}>Tìm kiếm</Text>
               <Text style={styles.drawerMenuArrow}>›</Text>
@@ -191,41 +215,43 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
 
       {/* Navigation Bar - ẩn trên mobile (dùng drawer thay thế) */}
       {!isMobile && (
-      <View style={styles.navBarOuter}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.navBarScroll} contentContainerStyle={styles.navBarScrollContent}>
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={handleHomeClick}>
-          <Text style={styles.navItem}>HOME</Text>
-        </TouchableOpacity>
-        <View style={styles.navSeparator} />
-        <TouchableOpacity onPress={() => handleNavClick('https://congchuc.quangninh.gov.vn/')}>
-          <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>QUẢN LÝ VĂN BẢN ĐIỀU HÀNH</Text>
-        </TouchableOpacity>
-        <View style={styles.navSeparator} />
-        <TouchableOpacity onPress={() => handleNavClick('https://quangninh.gov.vn/Trang/Default.aspx')}>
-          <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>CỔNG THÔNG TIN</Text>
-        </TouchableOpacity>
-        <View style={styles.navSeparator} />
-        <TouchableOpacity onPress={() => handleNavClick('https://mail.quangninh.gov.vn/owa/#path=/mail')}>
-          <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>THƯ ĐIỆN TỬ</Text>
-        </TouchableOpacity>
-        <View style={styles.navSeparator} />
-        <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>TÌM KIẾM</Text>
-        <View style={styles.navSeparator} />
-        <TouchableOpacity onPress={handleQuanTriClick}>
-          <Text style={[styles.navItem, currentUser && styles.navItemAuthenticated]}>
-            {currentUser ? `QUẢN TRỊ (${currentUser.fullName})` : 'QUẢN TRỊ'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      </ScrollView>
-      </View>
+        <View style={styles.navBarOuter}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.navBarScroll} contentContainerStyle={styles.navBarScrollContent}>
+            <View style={styles.navBar}>
+              <TouchableOpacity onPress={handleHomeClick}>
+                <Text style={styles.navItem}>HOME</Text>
+              </TouchableOpacity>
+              <View style={styles.navSeparator} />
+              <TouchableOpacity onPress={() => handleNavClick('https://congchuc.quangninh.gov.vn/')}>
+                <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>QUẢN LÝ VĂN BẢN ĐIỀU HÀNH</Text>
+              </TouchableOpacity>
+              <View style={styles.navSeparator} />
+              <TouchableOpacity onPress={() => handleNavClick('https://quangninh.gov.vn/Trang/Default.aspx')}>
+                <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>CỔNG THÔNG TIN</Text>
+              </TouchableOpacity>
+              <View style={styles.navSeparator} />
+              <TouchableOpacity onPress={() => handleNavClick('https://mail.quangninh.gov.vn/owa/#path=/mail')}>
+                <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>THƯ ĐIỆN TỬ</Text>
+              </TouchableOpacity>
+              <View style={styles.navSeparator} />
+              <TouchableOpacity onPress={() => navigate('/app/search')}>
+                <Text style={[styles.navItem, isMobile && styles.navItemMobile]}>TÌM KIẾM</Text>
+              </TouchableOpacity>
+              <View style={styles.navSeparator} />
+              <TouchableOpacity onPress={handleQuanTriClick}>
+                <Text style={[styles.navItem, currentUser && styles.navItemAuthenticated]}>
+                  {currentUser ? `QUẢN TRỊ (${currentUser.fullName})` : 'QUẢN TRỊ'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
       )}
 
       {/* Main Content - trên web không flex:1 để tránh khoảng trắng lớn */}
       <ScrollView
         ref={scrollViewRef}
-        style={[styles.scrollView, isWeb && styles.scrollViewWeb]}
+        style={[styles.scrollView, isWeb && !isMobile && styles.scrollViewWeb]}
         contentContainerStyle={styles.scrollViewContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -258,7 +284,7 @@ const ScheduleScreenWeb = ({ scheduleData, loading, onRefresh, refreshing, allDa
                 const dayData = allDaysData[dayKey] || [];
                 const dayDate = parseISO(dayKey);
                 const dayFormatted = format(dayDate, "EEEE, 'ngày' dd/MM/yyyy", { locale: vi });
-                
+
                 // Chỉ lấy 2 events đầu tiên
                 const limitedEvents = dayData.slice(0, 2);
 
@@ -294,6 +320,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  containerMobile: {
+    paddingTop: 0,
+    marginTop: 0,
+  },
   containerWeb: {
     flex: 0,
   },
@@ -308,9 +338,103 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  mobileHeaderWrapper: {
+    width: '100%',
+    flexDirection: 'column',
+    flexShrink: 0,
+  },
+
+  // ── New clean banner styles ──────────────────────────────────────────────
+  // Desktop: full-width container, images absolute
+  bannerDesktop: {
+    width: '100%',
+    height: LARGE_BANNER_HEIGHT_DESKTOP,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f4f8',
+  },
+  bannerLogoPanel: {
+    // unused — kept for mobile
+  },
+  bannerLogoDesktop: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    height: LARGE_BANNER_HEIGHT_DESKTOP,
+    width: LARGE_BANNER_HEIGHT_DESKTOP * (661 / 186), // correct aspect ratio
+  },
+  bannerTitlePanel: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 48,
+    width: '50%',
+  },
+  // Mobile banner strip
+  bannerStrip: {
+    width: '100%',
+    height: LARGE_BANNER_HEIGHT_MOBILE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#e8f4f8',
+    position: 'relative',
+  },
+  bannerDimMobile: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.20)',
+    zIndex: 1,
+  },
+  bannerLogMobile: { display: 'none' }, // replaced by bannerSealCircle
+  // Circular seal for mobile — 120px diameter
+  bannerSealCircle: {
+    position: 'absolute',
+    left: 12,
+    top: (LARGE_BANNER_HEIGHT_MOBILE - 120) / 2,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    zIndex: 2,
+  },
+  bannerSealImg: {
+    // 661x186 image, seal at horizontal center (x≈330)
+    // Scaled to height=120: scale=120/186=0.645, width=661*0.645=426px
+    // Seal center at 330*0.645=213px; circle center at 60px
+    // marginLeft = -(213-60) = -153px
+    width: 426,
+    height: 120,
+    marginLeft: -153,
+  },
+  bannerTextMobile: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    left: 12 + 120 + 8,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 10,
+    zIndex: 2,
+  },
+  // ── Legacy styles kept for reference (no longer used in banner) ──────────
   headerContainer: {
     width: '100%',
     position: 'relative',
+  },
+  headerContainerMobile: {
+    flexShrink: 0,
+    height: LARGE_BANNER_HEIGHT_MOBILE,
+    minHeight: LARGE_BANNER_HEIGHT_MOBILE,
+    zIndex: 9999,
+    marginTop: 0,
+    paddingTop: 0,
+    elevation: 9999,
   },
   largeBannerContainer: {
     width: '100%',
@@ -318,19 +442,27 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     maxWidth: 1200,
     alignSelf: 'center',
-    minHeight: 200,
+    minHeight: LARGE_BANNER_HEIGHT_DESKTOP,
   },
   largeBannerContainerMobile: {
-    minHeight: 100,
+    width: '100%',
+    maxWidth: '100%',
+    height: LARGE_BANNER_HEIGHT_MOBILE,
+    minHeight: LARGE_BANNER_HEIGHT_MOBILE,
+    flexShrink: 0,
+    zIndex: 9999,
+    elevation: 9999,
   },
   largeBanner: {
     width: '100%',
-    height: 200,
+    height: LARGE_BANNER_HEIGHT_DESKTOP,
     backgroundColor: '#e8e8e8',
     resizeMode: 'cover',
   },
   largeBannerMobile: {
-    height: 100,
+    width: '100%',
+    height: LARGE_BANNER_HEIGHT_MOBILE,
+    resizeMode: 'cover',
   },
   bannerOverlay: {
     position: 'absolute',
@@ -341,6 +473,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+  },
+  bannerOverlayMobile: {
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    zIndex: 10000,
+    elevation: 10000,
   },
   bannerOverlayContent: {
     flexDirection: 'row',
@@ -354,13 +492,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   bannerOverlayContentMobile: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
+    overflow: 'hidden',
+    height: LARGE_BANNER_HEIGHT_MOBILE,
+    minHeight: LARGE_BANNER_HEIGHT_MOBILE,
+    alignSelf: 'stretch',
+    width: '100%',
+    position: 'relative',
   },
-  // Ảnh banner 661x186 → để cao 200px cần rộng tối thiểu 200*(661/186) ≈ 711
   smallBannerWrapper: {
     width: '50%',
-    minWidth: 711,
-    height: 200,
+    minWidth: LARGE_BANNER_HEIGHT_DESKTOP * SMALL_BANNER_ASPECT,
+    height: LARGE_BANNER_HEIGHT_DESKTOP,
     flexShrink: 0,
     alignItems: 'stretch',
     justifyContent: 'center',
@@ -368,9 +511,17 @@ const styles = StyleSheet.create({
     marginLeft: -20,
   },
   smallBannerWrapperMobile: {
-    width: '28%',
-    minWidth: 358,
-    height: 100,
+    position: 'absolute',
+    left: -6,
+    top: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    paddingLeft: 0,
+    marginLeft: 0,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   smallBanner: {
     width: '100%',
@@ -378,8 +529,10 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   smallBannerMobile: {
-    width: '100%',
-    height: '100%',
+    width: LARGE_BANNER_HEIGHT_MOBILE * SMALL_BANNER_ASPECT,
+    height: LARGE_BANNER_HEIGHT_MOBILE,
+    flexShrink: 0,
+    marginLeft: 0,
   },
   headerTextWrapper: {
     width: '35%',
@@ -388,7 +541,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTextWrapperMobile: {
-    width: '72%',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: '48%',
+    paddingRight: 12,
+    paddingLeft: 8,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   headerTextContainer: {
     flex: 1,
@@ -397,10 +558,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
     marginLeft: 100,
     flexShrink: 1,
-    overflow: 'hidden',
   },
   headerTextContainerMobile: {
-    marginLeft: 12,
+    marginLeft: 0,
+    marginRight: 0,
+    alignItems: 'flex-end',
+  },
+  headerTextMobileBg: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignSelf: 'flex-end',
   },
   header: {
     backgroundColor: '#fff', // Nền trắng (fallback)
@@ -429,19 +598,37 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1976d2',
+    color: '#fff',
     marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
   },
   mainTitleMobile: {
-    fontSize: 18,
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#fff',
+    flexShrink: 0,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   subTitle: {
     fontSize: 18,
-    color: '#d32f2f',
+    color: '#ffe082',
     fontWeight: 'bold',
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
   },
   subTitleMobile: {
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#fff',
+    flexShrink: 0,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   logoContainer: {
     width: 100,
@@ -461,6 +648,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     width: '100%',
+    flexShrink: 0,
+    zIndex: 1,
   },
   hamburgerButton: {
     padding: 8,

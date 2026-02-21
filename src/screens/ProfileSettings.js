@@ -71,7 +71,7 @@ const ProfileSettings = ({ onBack }) => {
       const user = await getCurrentUser();
       if (user) {
         setCurrentUser(user);
-        
+
         // Load full user data from Firestore
         const userDoc = await getDoc(doc(db, 'users', user.id));
         if (userDoc.exists()) {
@@ -137,7 +137,7 @@ const ProfileSettings = ({ onBack }) => {
 
     try {
       setSaving(true);
-      
+
       const updateData = {
         fullName: profile.fullName,
         department: profile.department,
@@ -158,7 +158,7 @@ const ProfileSettings = ({ onBack }) => {
       }
 
       await updateDoc(doc(db, 'users', currentUser.id), updateData);
-      
+
       // Hiển thị modal thành công
       setShowSuccessModal(true);
     } catch (error) {
@@ -177,10 +177,12 @@ const ProfileSettings = ({ onBack }) => {
         'Thông báo',
         'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.',
         [
-          { text: 'OK', onPress: async () => {
-            await logout();
-            onBack();
-          }}
+          {
+            text: 'OK', onPress: async () => {
+              await logout();
+              onBack();
+            }
+          }
         ]
       );
     }
@@ -225,7 +227,13 @@ const ProfileSettings = ({ onBack }) => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
+        input.value = '';
+        // Append to body so browsers fire change event reliably on second pick
+        input.style.display = 'none';
+        document.body.appendChild(input);
         input.onchange = async (e) => {
+          // Clean up DOM element
+          if (document.body.contains(input)) document.body.removeChild(input);
           const file = e.target.files[0];
           if (file) {
             // Validate file size (max 5MB)
@@ -233,7 +241,7 @@ const ProfileSettings = ({ onBack }) => {
               Alert.alert('Lỗi', 'Kích thước ảnh không được vượt quá 5MB');
               return;
             }
-            
+
             // Validate file type
             if (!file.type.startsWith('image/')) {
               Alert.alert('Lỗi', 'Vui lòng chọn file ảnh');
@@ -245,6 +253,14 @@ const ProfileSettings = ({ onBack }) => {
             await uploadImageFromFile(file, imageUrl);
           }
         };
+        // Clean up if user cancels the picker (window regains focus without change event)
+        const onWindowFocus = () => {
+          setTimeout(() => {
+            if (document.body.contains(input)) document.body.removeChild(input);
+          }, 500);
+          window.removeEventListener('focus', onWindowFocus);
+        };
+        window.addEventListener('focus', onWindowFocus);
         input.click();
       } else {
         // Mobile: Sử dụng expo-image-picker
@@ -275,30 +291,32 @@ const ProfileSettings = ({ onBack }) => {
   const fileToBase64 = (file, maxSizeKB = 500) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         const base64 = e.target.result;
         // Kiểm tra kích thước (Base64 lớn hơn file gốc ~33%)
         const sizeInKB = (base64.length * 3) / 4 / 1024;
-        
+
         if (sizeInKB > maxSizeKB) {
           // Resize ảnh nếu quá lớn
-          const img = new Image();
+          // IMPORTANT: use document.createElement('img') NOT new Image()
+          // because 'Image' is imported from react-native (a React component, not HTMLImageElement)
+          const img = document.createElement('img');
           img.onload = () => {
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            
+
             // Tính toán kích thước mới để đạt maxSizeKB
             const ratio = Math.sqrt((maxSizeKB * 1024) / (width * height * 4));
             width = Math.floor(width * ratio);
             height = Math.floor(height * ratio);
-            
+
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            
+
             // Convert về Base64 với quality 0.8
             const resizedBase64 = canvas.toDataURL('image/jpeg', 0.8);
             resolve(resizedBase64);
@@ -309,7 +327,7 @@ const ProfileSettings = ({ onBack }) => {
           resolve(base64);
         }
       };
-      
+
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
@@ -325,7 +343,7 @@ const ProfileSettings = ({ onBack }) => {
       // Validate file size (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
         Alert.alert('Lỗi', 'Kích thước ảnh không được vượt quá 2MB');
-        return;
+        return; // finally will call setUploading(false)
       }
 
       // Convert to Base64 và resize nếu cần
@@ -351,7 +369,7 @@ const ProfileSettings = ({ onBack }) => {
       console.error('Error uploading image:', error);
       Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
     } finally {
-      setUploading(false);
+      setUploading(false); // Always reset loading state
     }
   };
 
@@ -365,42 +383,37 @@ const ProfileSettings = ({ onBack }) => {
       // Fetch ảnh và convert sang Base64
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      
-      // Convert blob to Base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result;
-        
-        // Kiểm tra kích thước
-        const sizeInKB = (base64String.length * 3) / 4 / 1024;
-        if (sizeInKB > 500) {
-          Alert.alert('Lỗi', 'Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn.');
-          setUploading(false);
-          return;
-        }
 
-        // Lưu Base64 vào Firestore
-        await updateDoc(doc(db, 'users', currentUser.id), {
-          avatarBase64: base64String,
-          avatarUrl: null, // Clear old URL if exists
-          updatedAt: new Date()
-        });
+      // Promise-based FileReader to work properly with async/await + try/finally
+      const base64String = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Không thể đọc file ảnh'));
+        reader.readAsDataURL(blob);
+      });
 
-        // Cập nhật state
-        setAvatarUrl(base64String);
+      // Kiểm tra kích thước
+      const sizeInKB = (base64String.length * 3) / 4 / 1024;
+      if (sizeInKB > 500) {
+        Alert.alert('Lỗi', 'Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn.');
+        return; // finally will call setUploading(false)
+      }
 
-        Alert.alert('Thành công', 'Ảnh đại diện đã được cập nhật');
-        setUploading(false);
-      };
-      reader.onerror = () => {
-        Alert.alert('Lỗi', 'Không thể đọc ảnh');
-        setUploading(false);
-      };
-      reader.readAsDataURL(blob);
+      // Lưu Base64 vào Firestore
+      await updateDoc(doc(db, 'users', currentUser.id), {
+        avatarBase64: base64String,
+        avatarUrl: null,
+        updatedAt: new Date()
+      });
+
+      // Cập nhật state
+      setAvatarUrl(base64String);
+      Alert.alert('Thành công', 'Ảnh đại diện đã được cập nhật');
     } catch (error) {
       console.error('Error uploading image:', error);
       Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
-      setUploading(false);
+    } finally {
+      setUploading(false); // Always reset — even if FileReader or updateDoc throws
     }
   };
 
@@ -493,7 +506,7 @@ const ProfileSettings = ({ onBack }) => {
                 )}
               </TouchableOpacity>
             </View>
-            
+
             {/* Avatar Menu (Facebook style) - Positioned near avatar */}
             {showAvatarMenu && (
               <Portal>
@@ -530,18 +543,7 @@ const ProfileSettings = ({ onBack }) => {
                         <Avatar.Icon size={20} icon="image" style={styles.menuIcon} />
                         <Text style={styles.menuItemText}>Chọn ảnh đại diện</Text>
                       </TouchableOpacity>
-                      {avatarUrl && (
-                        <TouchableOpacity
-                          style={[styles.menuItem, styles.menuItemDelete]}
-                          onPress={() => {
-                            setShowAvatarMenu(false);
-                            deleteAvatar();
-                          }}
-                        >
-                          <Avatar.Icon size={20} icon="delete" style={styles.menuIconDelete} />
-                          <Text style={[styles.menuItemText, styles.menuItemTextDelete]}>Xóa ảnh đại diện</Text>
-                        </TouchableOpacity>
-                      )}
+
                     </View>
                   </View>
                 </>
@@ -550,8 +552,8 @@ const ProfileSettings = ({ onBack }) => {
             <View style={styles.avatarInfo}>
               <Text style={styles.avatarName}>{profile.fullName}</Text>
               <Text style={styles.avatarRole}>
-                {currentUser?.role === 'admin' ? 'Quản trị viên' : 
-                 currentUser?.role === 'editor' ? 'Biên tập viên' : 'Người xem'}
+                {currentUser?.role === 'admin' ? 'Quản trị viên' :
+                  currentUser?.role === 'editor' ? 'Biên tập viên' : 'Người xem'}
               </Text>
             </View>
           </Card.Content>
@@ -590,13 +592,13 @@ const ProfileSettings = ({ onBack }) => {
         <Card style={[styles.settingCard, isMobile && styles.settingCardMobile]}>
           <Card.Content>
             <Text style={styles.settingTitle}>Tùy chỉnh Avatar</Text>
-            
+
             <Text style={styles.avatarHint}>
-              {avatarUrl 
+              {avatarUrl
                 ? 'Click vào ảnh đại diện ở trên để xem hoặc thay đổi ảnh'
                 : 'Click vào avatar ở trên để chọn ảnh, hoặc tùy chỉnh avatar với initials và màu sắc bên dưới'}
             </Text>
-            
+
             <TextInput
               label="Initials (2 ký tự)"
               value={profile.avatarInitials}
@@ -606,7 +608,7 @@ const ProfileSettings = ({ onBack }) => {
               maxLength={2}
               disabled={!!avatarUrl}
             />
-            
+
             <Text style={styles.label}>Màu avatar (khi không có ảnh):</Text>
             <View style={styles.colorPicker}>
               {getAvatarColors().map(color => (
@@ -629,7 +631,7 @@ const ProfileSettings = ({ onBack }) => {
         <Card style={styles.settingCard}>
           <Card.Content>
             <Text style={styles.settingTitle}>Thông tin cơ bản</Text>
-            
+
             <TextInput
               label="Họ và tên *"
               value={profile.fullName}
@@ -637,25 +639,25 @@ const ProfileSettings = ({ onBack }) => {
               style={styles.input}
               mode="outlined"
             />
-            
-                <TextInput
-                  label="Email *"
-                  value={profile.email}
-                  onChangeText={(text) => updateProfile('email', text)}
-                  style={styles.input}
-                  mode="outlined"
-                  keyboardType="email-address"
-                  editable={false}
-                />
-                
-                <TextInput
-                  label="Tên đăng nhập"
-                  value={profile.username}
-                  style={styles.input}
-                  mode="outlined"
-                  editable={false}
-                />
-            
+
+            <TextInput
+              label="Email *"
+              value={profile.email}
+              onChangeText={(text) => updateProfile('email', text)}
+              style={styles.input}
+              mode="outlined"
+              keyboardType="email-address"
+              editable={false}
+            />
+
+            <TextInput
+              label="Tên đăng nhập"
+              value={profile.username}
+              style={styles.input}
+              mode="outlined"
+              editable={false}
+            />
+
             <TextInput
               label="Phòng ban"
               value={profile.department}
@@ -663,7 +665,7 @@ const ProfileSettings = ({ onBack }) => {
               style={styles.input}
               mode="outlined"
             />
-            
+
             <TextInput
               label="Số điện thoại"
               value={profile.phone}
@@ -672,7 +674,7 @@ const ProfileSettings = ({ onBack }) => {
               mode="outlined"
               keyboardType="phone-pad"
             />
-            
+
             <TextInput
               label="Ghi chú"
               value={profile.bio}
@@ -696,13 +698,13 @@ const ProfileSettings = ({ onBack }) => {
               <Text style={styles.settingTitle}>Đổi mật khẩu</Text>
               <Text style={styles.toggleIcon}>{showPasswordSection ? '−' : '+'}</Text>
             </TouchableOpacity>
-            
+
             {showPasswordSection && (
               <>
                 <Text style={styles.passwordHint}>
                   Để trống nếu không muốn đổi mật khẩu
                 </Text>
-                
+
                 <View style={styles.passwordInputWrapper}>
                   <TextInput
                     label="Mật khẩu mới"
@@ -725,7 +727,7 @@ const ProfileSettings = ({ onBack }) => {
                     )}
                   </TouchableOpacity>
                 </View>
-                
+
                 <View style={styles.passwordInputWrapper}>
                   <TextInput
                     label="Xác nhận mật khẩu mới"
@@ -757,7 +759,7 @@ const ProfileSettings = ({ onBack }) => {
         <Card style={styles.settingCard}>
           <Card.Content>
             <Text style={styles.settingTitle}>Tùy chọn thông báo</Text>
-            
+
             <View style={styles.settingRow}>
               <Text style={styles.settingLabel}>Email thông báo</Text>
               <Switch
@@ -780,12 +782,12 @@ const ProfileSettings = ({ onBack }) => {
         <Card style={styles.settingCard}>
           <Card.Content>
             <Text style={styles.settingTitle}>Thông tin tài khoản</Text>
-            
+
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Vai trò:</Text>
               <Text style={styles.infoValue}>
-                {currentUser?.role === 'admin' ? 'Quản trị viên' : 
-                 currentUser?.role === 'editor' ? 'Biên tập viên' : 'Người xem'}
+                {currentUser?.role === 'admin' ? 'Quản trị viên' :
+                  currentUser?.role === 'editor' ? 'Biên tập viên' : 'Người xem'}
               </Text>
             </View>
             <View style={styles.infoRow}>
@@ -1002,36 +1004,43 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   viewAvatarContainer: {
     width: '90%',
-    maxWidth: 500,
+    maxWidth: 400,
+    alignItems: 'center',
     position: 'relative',
   },
   viewAvatarImage: {
     width: '100%',
-    height: '80%',
-    maxHeight: 500,
-    borderRadius: 8,
+    // Use aspectRatio so React Native can compute height from width
+    aspectRatio: 1,
+    maxWidth: 400,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
   },
   closeButton: {
     position: 'absolute',
-    top: -40,
+    top: -48,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   closeButtonText: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
+    lineHeight: 20,
   },
   avatarInfo: {
     flex: 1,

@@ -582,11 +582,13 @@ const styles = StyleSheet.create({
   statCard: {
     width: '48%',
     marginBottom: 12,
+    backgroundColor: '#fff',
   },
   statCardMobile: {
     width: '48%',
     minWidth: '48%',
     marginBottom: 8,
+    backgroundColor: '#fff',
   },
   statContent: {
     alignItems: 'center',
@@ -606,10 +608,12 @@ const styles = StyleSheet.create({
   menuCard: {
     marginHorizontal: 20,
     marginBottom: 20,
+    backgroundColor: '#fff',
   },
   menuCardMobile: {
     marginHorizontal: 12,
     marginBottom: 16,
+    backgroundColor: '#fff',
   },
   menuCardContent: {
     paddingVertical: 8,

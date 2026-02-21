@@ -13,6 +13,12 @@ import AdminDashboard from './screens/AdminDashboard';
 import ScheduleManagement from './screens/ScheduleManagement';
 import UserManagement from './screens/UserManagement';
 import { getCurrentUser, logout } from './services/AuthService';
+import SearchScreen from './screens/SearchScreen';
+
+// Search Page Component
+const SearchPage = () => {
+  return <SearchScreen />;
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -148,7 +154,7 @@ const AdminDashboardWrapper = () => {
   // Check if we're on a nested route
   // Debug: log current pathname
   console.log('AdminDashboardWrapper - Current pathname:', location.pathname);
-  
+
   if (location.pathname === '/app/admin/schedule') {
     return (
       <ScheduleManagement
@@ -180,10 +186,11 @@ const AppRouter = () => {
   return (
     <BrowserRouter>
       <PaperProvider>
-        <SafeAreaView style={styles.container} edges={Platform.OS === 'web' ? ['bottom'] : undefined}>
+        <SafeAreaView style={styles.container} edges={['bottom']}>
           <StatusBar style="auto" />
           <Routes>
             <Route path="/app/" element={<HomePage />} />
+            <Route path="/app/search" element={<SearchPage />} />
             <Route path="/app/login" element={<LoginPage />} />
             {/* Nested routes phải đặt trước parent route */}
             <Route
@@ -222,6 +229,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingTop: 0,
   },
 });
 
