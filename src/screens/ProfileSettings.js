@@ -8,6 +8,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getCurrentUser, logout, hashPassword } from '../services/AuthService';
 import CommonModal from '../components/CommonModal';
+import { useThemeContext } from '../contexts/ThemeContext';
 
 // Custom Eye Icon Component
 const EyeIcon = ({ size = 24, color = '#666' }) => (
@@ -60,6 +61,7 @@ const ProfileSettings = ({ onBack }) => {
   const [uploading, setUploading] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showViewAvatarModal, setShowViewAvatarModal] = useState(false);
+  const { isDarkMode, toggleTheme } = useThemeContext();
 
   useEffect(() => {
     loadProfile();
@@ -773,6 +775,14 @@ const ProfileSettings = ({ onBack }) => {
               <Switch
                 value={profile.pushNotifications}
                 onValueChange={(value) => updateProfile('pushNotifications', value)}
+              />
+            </View>
+            <Divider style={styles.divider} />
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>Chế độ ban đêm / Giao diện tối</Text>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleTheme}
               />
             </View>
           </Card.Content>

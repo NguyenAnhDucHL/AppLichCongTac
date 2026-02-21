@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Image, useWindowDimensions } from 'react-native';
-import { Text, Card, Avatar, Divider, Button, ActivityIndicator, Menu } from 'react-native-paper';
+import { Text, Card, Avatar, Divider, Button, ActivityIndicator, Menu, useTheme } from 'react-native-paper';
 import { useLocation } from 'react-router-dom';
 import { logout, getCurrentUser, hasPermission } from '../services/AuthService';
 import { doc, getDoc } from 'firebase/firestore';
@@ -11,11 +11,11 @@ import ReportsAnalytics from './ReportsAnalytics';
 import SystemSettings from './SystemSettings';
 import ProfileSettings from './ProfileSettings';
 import CommonModal from '../components/CommonModal';
-import { 
-  CalendarEditIcon, 
-  AccountGroupIcon, 
-  ChartLineIcon, 
-  CogIcon, 
+import {
+  CalendarEditIcon,
+  AccountGroupIcon,
+  ChartLineIcon,
+  CogIcon,
   ChevronRightIcon,
   AccountIcon
 } from '../components/PlatformIcon';
@@ -36,7 +36,9 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
     monthEvents: 0,
     totalUsers: 0
   });
-  
+
+  const theme = useTheme();
+
   // Sử dụng useLocation để detect khi quay lại từ ProfileSettings
   const location = useLocation();
 
@@ -102,7 +104,7 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
       setShowLogoutModal(false);
       await logout();
       console.log('✅ Logout thành công');
-      
+
       // Luôn gọi callback để quay về trang chủ
       if (onLogout) {
         onLogout();
@@ -142,18 +144,18 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
       'chart-line': ChartLineIcon,
       'cog': CogIcon,
     };
-    
+
     const IconComponent = iconMap[icon] || CalendarEditIcon;
 
     return (
       <TouchableOpacity style={[styles.menuItem, isMobile && styles.menuItemMobile]} onPress={onPress}>
         <View style={styles.menuContent}>
-          <IconComponent size={isMobile ? 32 : 40} color="#1976d2" style={styles.menuIcon} />
+          <IconComponent size={isMobile ? 32 : 40} color={theme.colors.primary} style={styles.menuIcon} />
           <View style={styles.menuText}>
-            <Text style={[styles.menuTitle, isMobile && styles.menuTitleMobile]}>{title}</Text>
-            <Text style={[styles.menuDescription, isMobile && styles.menuDescriptionMobile]}>{description}</Text>
+            <Text style={[styles.menuTitle, isMobile && styles.menuTitleMobile, { color: theme.colors.onSurface }]}>{title}</Text>
+            <Text style={[styles.menuDescription, isMobile && styles.menuDescriptionMobile, { color: theme.colors.onSurfaceVariant }]}>{description}</Text>
           </View>
-          <ChevronRightIcon size={24} color="#666" style={styles.chevron} />
+          <ChevronRightIcon size={24} color={theme.colors.onSurfaceVariant} style={styles.chevron} />
         </View>
       </TouchableOpacity>
     );
@@ -161,14 +163,14 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
 
   // Render different screens
   if (currentScreen === 'schedule') {
-    const handleBack = navigate 
+    const handleBack = navigate
       ? () => navigate('/app/admin')
       : () => setCurrentScreen('dashboard');
     return <ScheduleManagement onBack={handleBack} />;
   }
 
   if (currentScreen === 'users') {
-    const handleBack = navigate 
+    const handleBack = navigate
       ? () => navigate('/app/admin')
       : () => setCurrentScreen('dashboard');
     return <UserManagement onBack={handleBack} />;
@@ -184,12 +186,12 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
 
   if (currentScreen === 'profile') {
     return (
-      <ProfileSettings 
+      <ProfileSettings
         onBack={() => {
           setCurrentScreen('dashboard');
           // Reload user data khi quay lại để hiển thị avatar mới
           loadUserData();
-        }} 
+        }}
       />
     );
   }
@@ -204,19 +206,19 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={[styles.header, isMobile && styles.headerMobile]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.header, isMobile && styles.headerMobile, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.headerLeft}>
           <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Admin Dashboard</Text>
           <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>UBND Phường Cẩm Phả</Text>
         </View>
-        
+
         <View style={styles.userMenuContainer}>
           <Menu
             visible={showUserMenu}
             onDismiss={() => setShowUserMenu(false)}
             anchor={
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.googleUserTrigger}
                 onPress={() => setShowUserMenu(true)}
               >
@@ -226,15 +228,15 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
                     style={[styles.googleAvatarImage, { backgroundColor: user?.avatarColor || '#1976d2' }]}
                   />
                 ) : (
-                  <Avatar.Text 
-                    size={36} 
+                  <Avatar.Text
+                    size={36}
                     label={user?.avatarInitials || user?.fullName?.charAt(0) || 'A'}
                     style={[styles.googleAvatar, { backgroundColor: user?.avatarColor || '#1976d2' }]}
                   />
                 )}
               </TouchableOpacity>
             }
-            contentStyle={styles.googleMenuContent}
+            contentStyle={[styles.googleMenuContent, { backgroundColor: theme.colors.surface }]}
           >
             {/* User Info Section */}
             <View style={styles.googleMenuHeader}>
@@ -244,15 +246,15 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
                   style={[styles.googleMenuAvatarImage, { backgroundColor: user?.avatarColor || '#1976d2' }]}
                 />
               ) : (
-                <Avatar.Text 
-                  size={48} 
+                <Avatar.Text
+                  size={48}
                   label={user?.avatarInitials || user?.fullName?.charAt(0) || 'A'}
                   style={[styles.googleMenuAvatar, { backgroundColor: user?.avatarColor || '#1976d2' }]}
                 />
               )}
               <View style={styles.googleUserInfo}>
-                <Text style={styles.googleUserName}>{user?.fullName || 'Người dùng'}</Text>
-                <Text style={styles.googleUserEmail}>{user?.email || 'email@example.com'}</Text>
+                <Text style={[styles.googleUserName, { color: theme.colors.onSurface }]}>{user?.fullName || 'Người dùng'}</Text>
+                <Text style={[styles.googleUserEmail, { color: theme.colors.onSurfaceVariant }]}>{user?.email || 'email@example.com'}</Text>
               </View>
             </View>
 
@@ -267,8 +269,8 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
                   setCurrentScreen('profile');
                 }}
               >
-                <AccountIcon size={20} color="#666" style={styles.googleMenuIcon} />
-                <Text style={styles.googleMenuText}>Quản lý tài khoản</Text>
+                <AccountIcon size={20} color={theme.colors.onSurfaceVariant} style={styles.googleMenuIcon} />
+                <Text style={[styles.googleMenuText, { color: theme.colors.onSurface }]}>Quản lý tài khoản</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -278,8 +280,8 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
                   setCurrentScreen('settings');
                 }}
               >
-                <CogIcon size={20} color="#666" style={styles.googleMenuIcon} />
-                <Text style={styles.googleMenuText}>Cài đặt hệ thống</Text>
+                <CogIcon size={20} color={theme.colors.onSurfaceVariant} style={styles.googleMenuIcon} />
+                <Text style={[styles.googleMenuText, { color: theme.colors.onSurface }]}>Cài đặt hệ thống</Text>
               </TouchableOpacity>
             </View>
 
@@ -287,7 +289,7 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
 
             {/* Logout Button */}
             <TouchableOpacity
-              style={styles.googleLogoutButton}
+              style={[styles.googleLogoutButton, { backgroundColor: theme.colors.surfaceVariant }]}
               onPress={async () => {
                 setShowUserMenu(false);
                 // Đợi một chút để menu đóng trước
@@ -302,38 +304,38 @@ const AdminDashboard = ({ onLogout, onBack, navigate }) => {
         </View>
       </View>
 
-      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Tổng quan</Text>
+      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { color: theme.colors.onSurface }]}>Tổng quan</Text>
       <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile]}>
         <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
-          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile, { backgroundColor: theme.colors.surface }]}>
             <Card.Content style={styles.statContent}>
-              <Text style={styles.statNumber}>{stats.todayEvents}</Text>
-              <Text style={styles.statLabel}>Sự kiện hôm nay</Text>
+              <Text style={[styles.statNumber, { color: theme.colors.primary }]}>{stats.todayEvents}</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Sự kiện hôm nay</Text>
             </Card.Content>
           </Card>
-          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile, { backgroundColor: theme.colors.surface }]}>
             <Card.Content style={styles.statContent}>
-              <Text style={styles.statNumber}>{stats.weekEvents}</Text>
-              <Text style={styles.statLabel}>Sự kiện tuần này</Text>
+              <Text style={[styles.statNumber, { color: theme.colors.primary }]}>{stats.weekEvents}</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Sự kiện tuần này</Text>
             </Card.Content>
           </Card>
-          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile, { backgroundColor: theme.colors.surface }]}>
             <Card.Content style={styles.statContent}>
-              <Text style={styles.statNumber}>{stats.monthEvents}</Text>
-              <Text style={styles.statLabel}>Sự kiện tháng này</Text>
+              <Text style={[styles.statNumber, { color: theme.colors.primary }]}>{stats.monthEvents}</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Sự kiện tháng này</Text>
             </Card.Content>
           </Card>
-          <Card style={[styles.statCard, isMobile && styles.statCardMobile]}>
+          <Card style={[styles.statCard, isMobile && styles.statCardMobile, { backgroundColor: theme.colors.surface }]}>
             <Card.Content style={styles.statContent}>
-              <Text style={styles.statNumber}>{stats.totalUsers}</Text>
-              <Text style={styles.statLabel}>Người dùng</Text>
+              <Text style={[styles.statNumber, { color: theme.colors.primary }]}>{stats.totalUsers}</Text>
+              <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Người dùng</Text>
             </Card.Content>
           </Card>
         </View>
       </View>
 
-      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Chức năng</Text>
-      <Card style={[styles.menuCard, isMobile && styles.menuCardMobile]}>
+      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { color: theme.colors.onSurface }]}>Chức năng</Text>
+      <Card style={[styles.menuCard, isMobile && styles.menuCardMobile, { backgroundColor: theme.colors.surface }]}>
         <Card.Content style={styles.menuCardContent}>
           <MenuItem
             icon="calendar-edit"

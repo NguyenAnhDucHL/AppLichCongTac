@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { PaperProvider } from 'react-native-paper';
+import { PaperProvider, MD3LightTheme, MD3DarkTheme } from 'react-native-paper';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import ScheduleManagement from './screens/ScheduleManagement';
 import UserManagement from './screens/UserManagement';
 import { getCurrentUser, logout } from './services/AuthService';
 import SearchScreen from './screens/SearchScreen';
+import { ThemeProvider, useThemeContext } from './contexts/ThemeContext';
 
 // Search Page Component
 const SearchPage = () => {
@@ -182,45 +183,57 @@ const AdminDashboardWrapper = () => {
 };
 
 // Main Router Component
+const AppRouterContent = () => {
+  const { isDarkMode, isLoaded } = useThemeContext();
+
+  if (!isLoaded) return null;
+
+  return (
+    <PaperProvider theme={isDarkMode ? MD3DarkTheme : MD3LightTheme}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <StatusBar style="auto" />
+        <Routes>
+          <Route path="/app/" element={<HomePage />} />
+          <Route path="/app/search" element={<SearchPage />} />
+          <Route path="/app/login" element={<LoginPage />} />
+          {/* Nested routes phải đặt trước parent route */}
+          <Route
+            path="/app/admin/schedule"
+            element={
+              <ProtectedRoute>
+                <AdminDashboardWrapper />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/admin/users"
+            element={
+              <ProtectedRoute>
+                <AdminDashboardWrapper />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/app/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboardWrapper />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/app/*" element={<Navigate to="/app/" replace />} />
+        </Routes>
+      </SafeAreaView>
+    </PaperProvider>
+  );
+};
+
 const AppRouter = () => {
   return (
     <BrowserRouter>
-      <PaperProvider>
-        <SafeAreaView style={styles.container} edges={['bottom']}>
-          <StatusBar style="auto" />
-          <Routes>
-            <Route path="/app/" element={<HomePage />} />
-            <Route path="/app/search" element={<SearchPage />} />
-            <Route path="/app/login" element={<LoginPage />} />
-            {/* Nested routes phải đặt trước parent route */}
-            <Route
-              path="/app/admin/schedule"
-              element={
-                <ProtectedRoute>
-                  <AdminDashboardWrapper />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/app/admin/users"
-              element={
-                <ProtectedRoute>
-                  <AdminDashboardWrapper />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/app/admin"
-              element={
-                <ProtectedRoute>
-                  <AdminDashboardWrapper />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/app/*" element={<Navigate to="/app/" replace />} />
-          </Routes>
-        </SafeAreaView>
-      </PaperProvider>
+      <ThemeProvider>
+        <AppRouterContent />
+      </ThemeProvider>
     </BrowserRouter>
   );
 };
