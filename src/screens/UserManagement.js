@@ -122,7 +122,7 @@ const UserManagement = ({ onBack }) => {
       const selectedRole = roles.find(role => role.id === userData.role);
       // Hash password với bcrypt (bảo mật cao nhất)
       const hashedPassword = await hashPassword(userData.password);
-      
+
       const userDoc = {
         id: userData.email,
         username: userData.username,
@@ -139,7 +139,7 @@ const UserManagement = ({ onBack }) => {
       };
 
       await setDoc(doc(db, 'users', userData.email), userDoc);
-      
+
       setUsers(prev => [...prev, userDoc]);
       setNewUser({
         username: '',
@@ -185,11 +185,11 @@ const UserManagement = ({ onBack }) => {
       }
 
       await setDoc(doc(db, 'users', updatedUser.id), updatedUser, { merge: true });
-      
-      setUsers(prev => prev.map(user => 
+
+      setUsers(prev => prev.map(user =>
         user.id === updatedUser.id ? { ...user, ...updatedUser } : user
       ));
-      
+
       setEditingUser(null);
       setShowEditModal(false);
       setShowSuccessModal(true);
@@ -243,10 +243,10 @@ const UserManagement = ({ onBack }) => {
           updatedAt: new Date(),
           updatedBy: currentUser?.id || 'admin'
         };
-        
+
         await setDoc(doc(db, 'users', userId), updatedUser);
-        
-        setUsers(prev => prev.map(user => 
+
+        setUsers(prev => prev.map(user =>
           user.id === userId ? { ...user, isActive: !currentStatus } : user
         ));
       }
@@ -263,17 +263,17 @@ const UserManagement = ({ onBack }) => {
 
   // Filter users based on search and filters
   const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+    const matchesSearch =
       user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.department?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesRole = filterRole === 'all' || user.role === filterRole;
-    const matchesStatus = filterStatus === 'all' || 
+    const matchesStatus = filterStatus === 'all' ||
       (filterStatus === 'active' && user.isActive) ||
       (filterStatus === 'inactive' && !user.isActive);
-    
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -288,25 +288,25 @@ const UserManagement = ({ onBack }) => {
     useEffect(() => {
       const wasVisible = prevVisibleRef.current;
       const isNowVisible = visible;
-      
+
       // Khi modal mở lần đầu (false -> true)
       if (!wasVisible && isNowVisible && user) {
         setLocalUser({ ...user });
         prevUserIdRef.current = user?.id || null;
       }
-      
+
       // Khi modal đóng (true -> false)
       if (wasVisible && !isNowVisible) {
         // Reset để sẵn sàng cho lần mở tiếp theo
         prevUserIdRef.current = null;
       }
-      
+
       // Khi user ID thay đổi (chọn user khác) và modal đang mở
       if (isNowVisible && user?.id && prevUserIdRef.current !== user?.id) {
         setLocalUser({ ...user });
         prevUserIdRef.current = user?.id;
       }
-      
+
       prevVisibleRef.current = isNowVisible;
     }, [visible, user?.id]); // Chỉ sync khi visible hoặc user ID thay đổi
 
@@ -327,17 +327,17 @@ const UserManagement = ({ onBack }) => {
     };
 
     return (
-      <Modal 
-        visible={visible} 
-        transparent 
-        animationType="slide" 
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
         onRequestClose={onDismiss}
       >
         <View style={styles.modalOverlay}>
           <ScrollView contentContainerStyle={styles.modalScrollContent}>
             <View style={[styles.modalContent, isMobileLayout && styles.modalContentMobile]}>
               <Text style={styles.modalTitle}>{title}</Text>
-              
+
               <TextInput
                 label="Tên đăng nhập *"
                 value={localUser.username || ''}
@@ -346,7 +346,7 @@ const UserManagement = ({ onBack }) => {
                 mode="outlined"
                 editable={!isEditing}
               />
-              
+
               <TextInput
                 label="Email *"
                 value={localUser.email || ''}
@@ -356,7 +356,7 @@ const UserManagement = ({ onBack }) => {
                 keyboardType="email-address"
                 editable={!isEditing}
               />
-              
+
               <TextInput
                 label="Họ và tên *"
                 value={localUser.fullName || ''}
@@ -364,7 +364,7 @@ const UserManagement = ({ onBack }) => {
                 style={styles.input}
                 mode="outlined"
               />
-              
+
               <View style={styles.passwordInputWrapper}>
                 <TextInput
                   label={isEditing ? "Mật khẩu mới (để trống nếu không đổi)" : "Mật khẩu *"}
@@ -386,7 +386,7 @@ const UserManagement = ({ onBack }) => {
                   )}
                 </TouchableOpacity>
               </View>
-              
+
               <TextInput
                 label="Phòng ban"
                 value={localUser.department || ''}
@@ -394,7 +394,7 @@ const UserManagement = ({ onBack }) => {
                 style={styles.input}
                 mode="outlined"
               />
-              
+
               {/* Role selector */}
               <Text style={styles.label}>Vai trò:</Text>
               <View style={styles.chipContainer}>
@@ -410,7 +410,7 @@ const UserManagement = ({ onBack }) => {
                   </Chip>
                 ))}
               </View>
-              
+
               <View style={styles.switchContainer}>
                 <Text style={styles.switchLabel}>Kích hoạt tài khoản</Text>
                 <Switch
@@ -418,7 +418,7 @@ const UserManagement = ({ onBack }) => {
                   onValueChange={(value) => handleLocalChange('isActive', value)}
                 />
               </View>
-              
+
               <View style={styles.modalButtons}>
                 <Button onPress={onDismiss} style={styles.modalButton}>Hủy</Button>
                 <Button mode="contained" onPress={handleSave} style={styles.modalButton}>Lưu</Button>
@@ -569,73 +569,73 @@ const UserManagement = ({ onBack }) => {
           </Card>
         ) : (
           filteredUsers.map((user) => (
-          <Card key={user.id} style={[styles.userCard, isMobile && styles.userCardMobile]}>
-            <Card.Content>
-              <View style={[styles.userHeader, isMobile && styles.userHeaderMobile]}>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userFullName}>{user.fullName}</Text>
-                  <Text style={styles.userDetail}>@{user.username} • {user.email}</Text>
-                  <Text style={styles.userDetail}>{user.department}</Text>
+            <Card key={user.id} style={[styles.userCard, isMobile && styles.userCardMobile]}>
+              <Card.Content>
+                <View style={[styles.userHeader, isMobile && styles.userHeaderMobile]}>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userFullName}>{user.fullName}</Text>
+                    <Text style={styles.userDetail}>@{user.username} • {user.email}</Text>
+                    <Text style={styles.userDetail}>{user.department}</Text>
+                  </View>
+                  <View style={styles.userActions}>
+                    <Chip
+                      mode={user.isActive ? 'flat' : 'outlined'}
+                      textStyle={[
+                        styles.statusChip,
+                        { color: user.isActive ? '#4caf50' : '#f44336' }
+                      ]}
+                      style={{
+                        backgroundColor: user.isActive ? '#e8f5e8' : '#ffebee'
+                      }}
+                    >
+                      {user.isActive ? 'Hoạt động' : 'Tạm khóa'}
+                    </Chip>
+                  </View>
                 </View>
-                <View style={styles.userActions}>
-                  <Chip
-                    mode={user.isActive ? 'flat' : 'outlined'}
-                    textStyle={[
-                      styles.statusChip,
-                      { color: user.isActive ? '#4caf50' : '#f44336' }
-                    ]}
-                    style={{
-                      backgroundColor: user.isActive ? '#e8f5e8' : '#ffebee'
-                    }}
-                  >
-                    {user.isActive ? 'Hoạt động' : 'Tạm khóa'}
+
+                <View style={styles.userMeta}>
+                  <Chip mode="outlined" style={styles.roleChip}>
+                    {getRoleName(user.role)}
                   </Chip>
+                  <Text style={styles.userLastLogin}>
+                    {user.lastLogin ? `Đăng nhập: ${new Date(user.lastLogin.seconds * 1000).toLocaleDateString()}` : 'Chưa đăng nhập'}
+                  </Text>
                 </View>
-              </View>
-              
-              <View style={styles.userMeta}>
-                <Chip mode="outlined" style={styles.roleChip}>
-                  {getRoleName(user.role)}
-                </Chip>
-                <Text style={styles.userLastLogin}>
-                  {user.lastLogin ? `Đăng nhập: ${new Date(user.lastLogin.seconds * 1000).toLocaleDateString()}` : 'Chưa đăng nhập'}
-                </Text>
-              </View>
-              
-              {canWrite && (
-                <View style={styles.userButtons}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => {
-                      setEditingUser(user);
-                      setShowEditModal(true);
-                    }}
-                    style={styles.actionButton}
-                  >
-                    Sửa
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => toggleUserStatus(user.id, user.isActive)}
-                    style={styles.actionButton}
-                    disabled={user.id === currentUser?.id}
-                  >
-                    {user.isActive ? 'Khóa' : 'Mở khóa'}
-                  </Button>
-                  {canDelete && (
+
+                {canWrite && (
+                  <View style={styles.userButtons}>
                     <Button
                       mode="outlined"
-                      onPress={() => handleDeleteUser(user.id)}
-                      style={[styles.actionButton, styles.deleteButton]}
+                      onPress={() => {
+                        setEditingUser(user);
+                        setShowEditModal(true);
+                      }}
+                      style={styles.actionButton}
+                    >
+                      Sửa
+                    </Button>
+                    <Button
+                      mode="outlined"
+                      onPress={() => toggleUserStatus(user.id, user.isActive)}
+                      style={styles.actionButton}
                       disabled={user.id === currentUser?.id}
                     >
-                      Xóa
+                      {user.isActive ? 'Khóa' : 'Mở khóa'}
                     </Button>
-                  )}
-                </View>
-              )}
-            </Card.Content>
-          </Card>
+                    {canDelete && (
+                      <Button
+                        mode="outlined"
+                        onPress={() => handleDeleteUser(user.id)}
+                        style={[styles.actionButton, styles.deleteButton]}
+                        disabled={user.id === currentUser?.id}
+                      >
+                        Xóa
+                      </Button>
+                    )}
+                  </View>
+                )}
+              </Card.Content>
+            </Card>
           ))
         )}
       </ScrollView>
